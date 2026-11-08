@@ -1,0 +1,43 @@
+# Runtime data and secrets
+/data/
+/profiles/
+/kernels/
+/backups/
+/dist/
+/build/
+/work/
+/.mimosa/
+__pycache__/
+*.py[cod]
+*.log
+
+# Browser / proxy state
+/firefox-state/
+/ads-state/
+/singbox/
+/state/
+/ui-profile*/
+*.sqlite
+*.db
+
+# Binaries, installers and archives
+*.exe
+*.zip
+*.7z
+*.rar
+*.tar.gz
+
+# Local IDE / OS files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+
+# Legacy one-off exploratory scripts kept locally, not part of the product
+/*.py
+!/app.py
+/*.bat
+/*.js
+/*.json
+/*.spec
+!/build.spec

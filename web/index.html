@@ -1,0 +1,3058 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>多账号环境管理器</title>
+<style>
+  /* ===== 设计变量：现代浅色 ===== */
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --surface-2: #fbfcfd;
+    --border: #e8eaee;
+    --border-strong: #d8dbe2;
+    --text: #1a1d23;
+    --text-2: #5c6270;
+    --text-3: #9096a3;
+    --primary: #2f6fed;
+    --primary-hover: #2560d8;
+    --primary-soft: #eef4ff;
+    --success: #17a673;
+    --success-soft: #e8f7f1;
+    --warn: #d98613;
+    --warn-soft: #fdf5e6;
+    --danger: #dc3b3b;
+    --danger-soft: #fdeeee;
+    --purple: #7a5af5;
+    --purple-soft: #f2efff;
+    --radius: 10px;
+    --radius-sm: 7px;
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05);
+    --shadow: 0 2px 8px rgba(16, 24, 40, .06);
+    --shadow-lg: 0 12px 32px rgba(16, 24, 40, .12);
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13.5px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1560px; margin: 0 auto; padding: 28px 32px 48px; }
+  /* ===== 顶部 ===== */
+  .topbar {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 22px; flex-wrap: wrap;
+  }
+  h1 {
+    font-size: 21px; font-weight: 650; letter-spacing: -.3px;
+    color: var(--text);
+  }
+  .sub { color: var(--text-3); font-size: 12.5px; }
+  .stats {
+    margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 7px 13px;
+    font-size: 12px; color: var(--text-2); box-shadow: var(--shadow-sm);
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .stat b { color: var(--text); font-size: 15px; font-weight: 650; }
+  .stat.alert b { color: var(--warn); }
+  /* ===== 标签页 ===== */
+  .tabs {
+    display: flex; gap: 2px; margin-bottom: 20px;
+    border-bottom: 1px solid var(--border); padding-bottom: 0;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 10px 16px; cursor: pointer; font-size: 13.5px;
+    color: var(--text-2); border-bottom: 2px solid transparent;
+    margin-bottom: -1px; white-space: nowrap; transition: color .15s;
+    font-weight: 500;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.on { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  /* ===== 按钮 ===== */
+  button {
+    font-family: inherit; font-size: 12.5px; font-weight: 500;
+    padding: 7px 14px; border-radius: var(--radius-sm);
+    border: 1px solid transparent; cursor: pointer;
+    background: var(--primary); color: #fff;
+    transition: background .15s, border-color .15s, transform .06s;
+    white-space: nowrap; box-shadow: var(--shadow-sm);
+  }
+  button:hover { background: var(--primary-hover); }
+  button:active { transform: translateY(1px); }
+  button.ghost {
+    background: var(--surface); color: var(--text-2);
+    border-color: var(--border-strong); box-shadow: none;
+  }
+  button.ghost:hover { background: var(--surface-2); color: var(--text); border-color: #c4c8d2; }
+  button.danger { background: var(--danger); }
+  button.danger:hover { background: #c62f2f; }
+  button.soft-danger {
+    background: var(--danger-soft); color: var(--danger);
+    border-color: #f6d5d5; box-shadow: none;
+  }
+  button.soft-danger:hover { background: #fbdede; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.sm { padding: 4px 10px; font-size: 11.5px; border-radius: 6px; }
+  /* ===== 表单控件 ===== */
+  input[type=text], input[type=password], input[type=number], select, textarea {
+    font-family: inherit; font-size: 12.5px;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    padding: 7px 10px; transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(47, 111, 237, .12);
+  }
+  input::placeholder, textarea::placeholder { color: var(--text-3); }
+  textarea { resize: vertical; font-family: var(--mono); font-size: 11.5px; line-height: 1.65; }
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239096a3' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+    padding-right: 28px;
+  }
+  .checkbox {
+    width: 15px; height: 15px; cursor: pointer;
+    accent-color: var(--primary); border-radius: 3px;
+  }
+  /* ===== 卡片 ===== */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  /* ===== 工具栏 / 筛选栏 ===== */
+  .toolbar {
+    display: flex; gap: 8px; align-items: center;
+    flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .toolbar .spacer { margin-left: auto; }
+  .filterbar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 14px; padding: 12px 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  }
+  .filterbar input[type=text] { width: 200px; }
+  #filtCount { margin-left: auto; }
+  /* ===== 批量操作条 ===== */
+  .bulkbar {
+    display: none; align-items: center; gap: 9px;
+    padding: 11px 16px; margin-bottom: 12px;
+    background: var(--primary-soft); border: 1px solid #d3e2fd;
+    border-radius: var(--radius); font-size: 12.5px; color: #1c4796;
+    box-shadow: var(--shadow-sm);
+  }
+  .bulkbar.show { display: flex; flex-wrap: wrap; }
+  .bulkbar b { color: var(--primary); font-weight: 650; }
+  /* ===== 表格 ===== */
+  .tbl-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: auto;
+    box-shadow: var(--shadow-sm);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 11px 12px;
+    font-size: 11.5px; font-weight: 600; color: var(--text-3);
+    background: var(--surface-2); white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 2;
+    letter-spacing: .2px;
+  }
+  td {
+    padding: 11px 12px; border-bottom: 1px solid #f0f2f5;
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #fafbfc; }
+  tbody tr.sel td { background: var(--primary-soft); }
+  .mono { font-family: var(--mono); font-size: 11.5px; color: var(--text-2); }
+  .muted { color: var(--text-3); }
+  .node-name { color: var(--text); font-weight: 500; }
+  /* ===== 状态点 ===== */
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block; margin-right: 5px;
+  }
+  .dot.on { background: var(--success); box-shadow: 0 0 0 3px rgba(23,166,115,.15); }
+  .dot.off { background: #c3c8d1; }
+  .dot.warn { background: var(--warn); }
+  /* ===== 标签 ===== */
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 5px;
+    font-size: 10.5px; font-weight: 500; font-family: var(--mono);
+    white-space: nowrap;
+  }
+  .tag.blue { background: var(--primary-soft); color: #2560d8; }
+  .tag.red { background: var(--danger-soft); color: var(--danger); }
+  .tag.green { background: var(--success-soft); color: #0f8058; }
+  .tag.gray { background: #f0f2f5; color: var(--text-3); }
+  .tag.purple { background: var(--purple-soft); color: #6344e0; }
+  .tagchip {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    background: #f0f2f5; color: var(--text-2);
+    font-size: 10px; margin: 1px 3px 1px 0;
+  }
+  .row-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+  .empty {
+    text-align: center; color: var(--text-3);
+    padding: 56px 20px; font-size: 13px;
+  }
+  /* ===== 弹窗 ===== */
+  .modal-bg {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(16, 24, 40, .45);
+    backdrop-filter: blur(2px);
+    display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    padding: 26px; width: 100%; max-width: 620px;
+    max-height: 88vh; overflow-y: auto;
+  }
+  .modal.wide { max-width: 860px; }
+  .modal h2 {
+    font-size: 16px; font-weight: 650; margin-bottom: 18px;
+    color: var(--text); letter-spacing: -.2px;
+  }
+  .modal-actions {
+    display: flex; gap: 9px; justify-content: flex-end;
+    margin-top: 22px; padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  /* ===== 表单字段 ===== */
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; color: var(--text-2); font-size: 12px;
+    font-weight: 500; margin-bottom: 6px;
+  }
+  .field input, .field select, .field textarea { width: 100%; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .hint { color: var(--text-3); font-size: 11px; margin-top: 5px; line-height: 1.5; }
+  /* ===== 提示框 ===== */
+  .warn {
+    background: var(--warn-soft); border: 1px solid #f5e3c2;
+    color: #8a5c0d; padding: 12px 15px;
+    border-radius: var(--radius-sm); font-size: 12px;
+    margin-bottom: 16px; line-height: 1.65;
+  }
+  .ok-box {
+    background: var(--success-soft); border: 1px solid #c9ecdf;
+    color: #0d7150; padding: 12px 15px;
+    border-radius: var(--radius-sm); font-size: 12px;
+    margin-bottom: 16px; line-height: 1.65;
+  }
+  /* ===== Toast ===== */
+  .msg {
+    position: fixed; bottom: 26px; right: 26px; z-index: 200;
+    background: #1a1d23; color: #fff;
+    padding: 13px 19px; border-radius: 10px;
+    max-width: 460px; font-size: 12.5px;
+    box-shadow: 0 10px 30px rgba(16,24,40,.28);
+    opacity: 0; transform: translateY(10px);
+    transition: opacity .22s, transform .22s;
+    pointer-events: none; line-height: 1.55;
+  }
+  .msg.show { opacity: 1; transform: translateY(0); }
+  .msg.err { background: #b32b2b; }
+  .msg.ok { background: #0d8058; }
+  /* ===== 同步从窗口列表 ===== */
+  .slave-list {
+    display: grid; gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+  .slave-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 10px 13px; font-size: 12.5px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .slave-item:hover { border-color: var(--border-strong); background: var(--surface); }
+  .slave-item.sel { border-color: var(--primary); background: var(--primary-soft); }
+  .slave-item.disabled { opacity: .45; cursor: not-allowed; }
+  /* 滚动条 */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #d3d7de; border-radius: 5px; border: 2px solid var(--bg);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #b9bec8; }
+  /* ============================================================
+     AdsPower-inspired shell: left nav + light workspace + cards
+     ============================================================ */
+  body { background: #f4f6fa; }
+  .wrap {
+    max-width: none; margin: 0; padding: 0;
+    display: grid;
+    grid-template-columns: 236px minmax(0, 1fr);
+    grid-template-rows: 72px minmax(0, 1fr);
+    min-height: 100vh;
+  }
+  .topbar {
+    grid-column: 1 / -1; grid-row: 1;
+    margin: 0; padding: 0 26px; height: 72px;
+    background: #fff; border-bottom: 1px solid #e9edf5;
+    display: flex; align-items: center; gap: 14px;
+    position: sticky; top: 0; z-index: 30;
+  }
+  .topbar h1 { font-size: 18px; font-weight: 650; letter-spacing: -.2px; }
+  .topbar .sub { font-size: 12px; color: #98a1b2; }
+  .topbar .stats { margin-left: auto; gap: 8px; }
+  .topbar .stat {
+    background: #f8fafc; border: 1px solid #e9edf5;
+    box-shadow: none; border-radius: 8px; padding: 6px 11px;
+  }
+  .topbar .stat b { font-size: 14px; }
+  .tabs {
+    grid-column: 1; grid-row: 2;
+    display: flex; flex-direction: column; align-items: stretch; gap: 3px;
+    margin: 0; padding: 18px 14px 16px;
+    background: #fff; border-right: 1px solid #e9edf5;
+    border-bottom: none;
+    height: calc(100vh - 72px); position: sticky; top: 72px;
+    overflow-y: auto;
+  }
+  .side-brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 8px 16px;
+  }
+  .side-logo {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: linear-gradient(135deg, #2f6fed, #6b9aff);
+    color: #fff; font-weight: 700; font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 5px 12px rgba(47, 111, 237, .22);
+  }
+  .side-brand-text { min-width: 0; }
+  .side-title { font-size: 14px; font-weight: 650; color: #1a1d23; line-height: 1.3; }
+  .side-sub {
+    font-size: 9.5px; color: #a2a9b7; letter-spacing: .8px;
+    text-transform: uppercase; margin-top: 1px;
+  }
+  .side-new {
+    width: 100%; justify-content: center; margin: 2px 0 8px;
+    padding: 9px 12px; border-radius: 8px; font-size: 12.5px;
+    background: var(--primary); box-shadow: 0 4px 10px rgba(47,111,237,.18);
+  }
+  .side-section {
+    padding: 14px 10px 5px; font-size: 10px; font-weight: 600;
+    color: #a2a9b7; letter-spacing: .7px; text-transform: uppercase;
+  }
+  .tabs .tab {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 11px; margin: 0; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 500; color: #5c6270;
+    white-space: nowrap; line-height: 1.4;
+  }
+  .tabs .tab::before {
+    content: "•"; width: 18px; text-align: center;
+    font-size: 15px; color: #9aa3b2; flex: 0 0 18px;
+  }
+  .tabs .tab[data-tab="envs"]::before { content: "▦"; }
+  .tabs .tab[data-tab="kernels"]::before { content: "◈"; }
+  .tabs .tab[data-tab="nodes"]::before { content: "☍"; }
+  .tabs .tab[data-tab="subs"]::before { content: "⇅"; }
+  .tabs .tab[data-tab="sync"]::before { content: "⧉"; }
+  .tabs .tab[data-tab="recycle"]::before { content: "♻"; }
+  .tabs .tab[data-tab="members"]::before { content: "👥"; font-size: 13px; }
+  .tabs .tab[data-tab="cloud"]::before { content: "☁"; }
+  .tabs .tab:hover { background: #f5f7fb; color: #1a1d23; }
+  .tabs .tab.on {
+    background: #eef3ff; color: var(--primary);
+    border: none; font-weight: 600;
+  }
+  .tabs .tab.on::before { color: var(--primary); }
+  .side-spacer { flex: 1; min-height: 24px; }
+  .side-user {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px; border: 1px solid #e9edf5; border-radius: 10px;
+    background: #fbfcff;
+  }
+  .side-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #eef3ff; display: flex; align-items: center;
+    justify-content: center; font-size: 14px; flex: 0 0 30px;
+  }
+  .side-user-info { min-width: 0; display: flex; flex-direction: column; }
+  .side-user-name {
+    font-size: 11.5px; font-weight: 600; color: #1a1d23;
+    cursor: pointer; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .side-plan { font-size: 9.5px; color: #a2a9b7; margin-top: 1px; }
+  #panel-envs, #panel-kernels, #panel-nodes, #panel-subs,
+  #panel-sync, #panel-recycle, #panel-members, #panel-cloud {
+    grid-column: 2; grid-row: 2;
+    margin: 18px 22px 24px; padding: 18px 20px;
+    background: #fff; border: 1px solid #e9edf5;
+    border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,.03);
+    overflow: auto; max-height: calc(100vh - 72px - 42px);
+  }
+  .bulkbar {
+    background: #f8fafc; border: 1px solid #e9edf5;
+    border-radius: 9px; padding: 7px 10px;
+  }
+  .filterbar {
+    background: #fff; border: 1px solid #eef1f6;
+    border-radius: 9px; padding: 8px 10px; margin-bottom: 12px;
+  }
+  .tbl-wrap {
+    border: 1px solid #edf0f5; border-radius: 10px;
+    overflow: visible; background: #fff;
+  }
+  table thead th {
+    background: #f8fafc; color: #7b8494;
+    font-size: 11.5px; font-weight: 600;
+    padding: 10px 12px; border-bottom: 1px solid #edf0f5;
+  }
+  table tbody td {
+    padding: 11px 12px; border-bottom: 1px solid #f1f3f7;
+    vertical-align: middle;
+  }
+  table tbody tr:hover { background: #fafbff; }
+  .fp-main { font-size: 11.5px; color: #1a1d23; line-height: 1.4; }
+  .env-status { white-space: nowrap; }
+  .fp-sub { font-size: 10.5px; color: #8a93a3; margin-top: 1px; line-height: 1.4; }
+  .fp-gpu {
+    max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .row-actions { display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; }
+  .more-select {
+    width: 84px; height: 26px; padding: 2px 22px 2px 8px;
+    font-size: 11px; border-radius: 7px; color: #5c6270;
+  }
+  button { border-radius: 8px; }
+  .modal {
+    border-radius: 14px; border: 1px solid #e9edf5;
+    box-shadow: 0 18px 50px rgba(16,24,40,.16);
+  }
+  .modal-bg.show { backdrop-filter: blur(2px); }
+  .warn {
+    background: #fff8e7; border: 1px solid #f4dfb2;
+    color: #8a6414; border-radius: 9px;
+  }
+  .tag { border-radius: 6px; }
+  @media (max-width: 980px) {
+    .wrap {
+      grid-template-columns: 1fr;
+      grid-template-rows: 64px auto minmax(0, 1fr);
+    }
+    .topbar { height: 64px; padding: 0 16px; }
+    .tabs {
+      grid-column: 1; grid-row: 2; height: auto;
+      position: static; flex-direction: row; flex-wrap: wrap;
+      padding: 10px 12px; border-right: none;
+      border-bottom: 1px solid #e9edf5;
+    }
+    .side-brand, .side-section, .side-spacer, .side-user { display: none; }
+    .side-new { width: auto; margin: 0 8px 0 0; }
+    #panel-envs, #panel-kernels, #panel-nodes, #panel-subs,
+    #panel-sync, #panel-recycle, #panel-members, #panel-cloud {
+      grid-column: 1; grid-row: 3; margin: 12px;
+      max-height: none;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1 id="pageTitle">环境管理</h1>
+    <span class="sub">独立指纹 · 独立出口 · 独立登录态</span>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div class="tabs">
+    <div class="side-brand">
+      <div class="side-logo">E</div>
+      <div class="side-brand-text">
+        <div class="side-title">多账号环境</div>
+        <div class="side-sub">Env Manager</div>
+      </div>
+    </div>
+    <button class="side-new" onclick="openCreate()">+ 新建环境</button>
+    <div class="side-section">管理</div>
+    <div class="tab on" data-tab="envs" onclick="switchTab('envs')">环境管理</div>
+    <div class="tab" data-tab="kernels" onclick="switchTab('kernels')">内核</div>
+    <div class="tab" data-tab="nodes" onclick="switchTab('nodes')">节点池</div>
+    <div class="tab" data-tab="subs" onclick="switchTab('subs')">订阅</div>
+    <div class="tab" data-tab="sync" onclick="switchTab('sync')">窗口同步</div>
+    <div class="side-section">系统</div>
+    <div class="tab" data-tab="recycle" onclick="switchTab('recycle')">回收站</div>
+    <div class="tab" data-tab="members" onclick="switchTab('members')">成员</div>
+    <div class="tab" data-tab="cloud" onclick="switchTab('cloud')">云端同步</div>
+    <div class="side-spacer"></div>
+    <div class="side-user">
+      <div class="side-avatar">👤</div>
+      <div class="side-user-info">
+        <span id="loginBadge" class="side-user-name" style="display:none" onclick="doLogout()" title="点击退出登录"></span>
+        <span class="side-plan">本地版 · Local</span>
+      </div>
+    </div>
+  </div>
+  <!-- ========== 环境面板 ========== -->
+  <div id="panel-envs">
+    <div class="bulkbar" id="envBulk">
+      <span>已选 <b id="selCount">0</b> 个环境</span>
+      <button class="sm" onclick="bulkEnv('start')">批量启动</button>
+      <button class="sm ghost" onclick="bulkEnv('stop')">批量停止</button>
+      <button class="sm ghost" onclick="bulkEnv('regen')">批量换指纹</button>
+      <button class="sm ghost" onclick="compareSelected()">对比指纹</button>
+      <button class="sm ghost" onclick="bulkSetGroup()">设分组</button>
+      <button class="sm ghost" onclick="applyLayout('grid')">网格排列</button>
+      <button class="sm ghost" onclick="applyLayout('tile-h')">横向平铺</button>
+      <button class="sm ghost" onclick="applyLayout('cascade')">层叠</button>
+      <button class="sm ghost" onclick="bulkExportCookies()">导出Cookie</button>
+      <button class="sm danger" onclick="bulkRecycle()">移入回收站</button>
+      <button class="sm ghost" onclick="clearSel()" style="margin-left:auto">取消选择</button>
+    </div>
+    <div style="display:flex;gap:9px;margin-bottom:11px;flex-wrap:wrap;align-items:center">
+      <button onclick="openCreate()">+ 新建环境</button>
+      <button class="ghost" onclick="startAll()">全部启动</button>
+      <button class="ghost" onclick="stopAll()">全部停止</button>
+      <button class="ghost" onclick="autoAssign()">自动分配节点</button>
+      <button class="ghost" onclick="openExcelImport()">Excel导入</button>
+      <button class="ghost" onclick="exportConfig()">导出配置</button>
+      <button class="ghost" onclick="openImportConfig()">导入配置</button>
+      <button class="ghost sm" onclick="load()">刷新</button>
+      <span id="sbStatus" class="tag red" style="margin-left:auto">检测中</span>
+    </div>
+    <div class="filterbar">
+      <input type="text" id="filt-text" placeholder="搜索名称 / 编号 / 备注" oninput="renderEnvTable()" style="width:210px">
+      <select id="filt-group" onchange="renderEnvTable()">
+        <option value="">全部分组</option>
+      </select>
+      <select id="filt-tag" onchange="renderEnvTable()">
+        <option value="">全部标签</option>
+      </select>
+      <select id="filt-status" onchange="renderEnvTable()">
+        <option value="">全部状态</option>
+        <option value="running">运行中</option>
+        <option value="stopped">已停止</option>
+        <option value="locked">已上锁</option>
+        <option value="nonode">未配节点</option>
+      </select>
+      <span id="filtCount" class="muted"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:32px"><input type="checkbox" class="checkbox" id="checkAll" onchange="toggleAll(this)"></th>
+            <th>环境</th>
+            <th style="width:74px">状态</th>
+            <th style="width:110px">分组 / 标签</th>
+            <th>设备指纹</th>
+            <th style="width:120px">代理</th>
+            <th style="width:110px">出口</th>
+            <th style="width:170px">操作</th>
+          </tr>
+        </thead>
+        <tbody id="envBody"><tr><td colspan="8" class="empty">加载中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- ========== 内核管理 ========== -->
+  <div id="panel-kernels" style="display:none">
+    <div class="warn" style="margin-bottom:12px">
+      内核是浏览器本体，不是环境。这里按版本下载 Mozilla 官方 Firefox 包，
+      安装到 <code>kernels/firefox/&lt;version&gt;</code>；已有环境不会自动切换内核。
+    </div>
+    <div id="kernelCards" class="grid2"></div>
+    <div id="kernelJob" style="margin-top:14px"></div>
+  </div>
+  <!-- ========== 回收站 ========== -->
+  <div id="panel-recycle" style="display:none">
+    <div class="warn" style="margin-bottom:12px">
+      移入回收站的环境可以被恢复。彻底删除会连同浏览器数据目录一起删掉，不可撤销。
+    </div>
+    <div style="display:flex;gap:9px;margin-bottom:11px;flex-wrap:wrap;align-items:center">
+      <button class="danger" onclick="purgeSelected()">彻底删除选中</button>
+      <button class="ghost sm" onclick="loadRecycle()">刷新</button>
+      <span id="recycleCount" class="muted" style="margin-left:auto"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:32px"><input type="checkbox" class="checkbox" id="rCheckAll" onchange="toggleAllRecycle(this)"></th>
+            <th>环境</th>
+            <th>分组</th>
+            <th>原节点</th>
+            <th style="width:160px">删除时间</th>
+            <th style="width:150px">操作</th>
+          </tr>
+        </thead>
+        <tbody id="recycleBody"><tr><td colspan="6" class="empty">回收站为空</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- ========== 成员面板 ========== -->
+  <div id="panel-members" style="display:none">
+    <div style="display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+      <button onclick="openMemberModal()">+ 添加成员</button>
+      <span class="muted" style="font-size:12px">角色决定能做什么，环境授权决定能对哪些环境做。管理员不受环境范围限制。</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>用户名</th><th>显示名</th><th style="width:100px">角色</th>
+          <th>环境范围</th><th style="width:70px">状态</th><th style="width:200px">操作</th>
+        </tr></thead>
+        <tbody id="memberBody"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- ========== 云端同步面板 ========== -->
+  <div id="panel-cloud" style="display:none">
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px">WebDAV 配置</div>
+        <div class="field">
+          <label>服务器地址</label>
+          <input type="text" id="cl-url" placeholder="https://dav.jianguoyun.com/dav/">
+          <div class="hint">坚果云：https://dav.jianguoyun.com/dav/（需在坚果云设置里开启 WebDAV）</div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>用户名</label><input type="text" id="cl-user"></div>
+          <div class="field"><label>密码 / 应用密码</label><input type="password" id="cl-pass" placeholder="留空则沿用已保存的"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>远端目录</label><input type="text" id="cl-dir" value="env-manager"></div>
+          <div class="field">
+            <label>内网地址</label>
+            <select id="cl-private">
+              <option value="0">拒绝（推荐）</option>
+              <option value="1">允许（NAS 在内网时选这个）</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <button onclick="saveCloud()">保存配置</button>
+          <button class="ghost" onclick="testCloud()">测试连接</button>
+        </div>
+        <div id="cloudMsg" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px">备份与恢复</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button onclick="cloudBackup()">立即备份到云端</button>
+          <button class="ghost" onclick="cloudList()">刷新备份列表</button>
+        </div>
+        <div class="muted" id="cloudLast" style="font-size:12px;margin-bottom:10px"></div>
+        <div class="tbl-wrap" style="max-height:280px;overflow:auto">
+          <table>
+            <thead><tr><th>备份文件</th><th style="width:150px">操作</th></tr></thead>
+            <tbody id="cloudFiles"><tr><td colspan="2" class="empty">尚无备份</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ========== 节点池面板 ========== -->
+  <!-- ========== 节点池面板 ========== -->
+  <div id="panel-nodes" style="display:none">
+    <div style="display:flex;gap:9px;margin-bottom:11px;flex-wrap:wrap;align-items:center">
+      <button onclick="openImport()">+ 导入节点</button>
+      <button class="ghost" onclick="testAllNodes()">全部测速</button>
+      <button class="ghost" onclick="openAssignModal()">批量分配</button>
+      <button class="ghost" onclick="autoAssign()">自动分配到环境</button>
+      <button class="ghost sm" onclick="loadNodes()">刷新</button>
+      <span id="nodeCount" class="muted" style="margin-left:auto"></span>
+    </div>
+    <div class="bulkbar" id="nodeBulk">
+      <span>已选 <b id="nselCount">0</b> 个节点</span>
+      <button class="sm danger" onclick="bulkDeleteNodes()">批量删除</button>
+      <button class="sm ghost" onclick="clearNodeSel()" style="margin-left:auto">取消选择</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:32px"><input type="checkbox" class="checkbox" id="nCheckAll" onchange="toggleAllNodes(this)"></th>
+            <th>名称</th>
+            <th style="width:90px">协议</th>
+            <th>服务器</th>
+            <th style="width:60px">端口</th>
+            <th>特性</th>
+            <th>分组</th>
+            <th style="width:150px">出口 IP</th>
+            <th style="width:130px">操作</th>
+          </tr>
+        </thead>
+        <tbody id="nodeBody"><tr><td colspan="9" class="empty">加载中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- ========== 订阅面板 ========== -->
+  <div id="panel-subs" style="display:none">
+    <div style="display:flex;gap:9px;margin-bottom:11px;flex-wrap:wrap;align-items:center">
+      <button onclick="openSubModal()">+ 添加订阅</button>
+      <button class="ghost" onclick="syncAllSubs()">同步全部</button>
+      <button class="ghost sm" onclick="loadSubs()">刷新</button>
+      <span id="subCount" class="muted" style="margin-left:auto"></span>
+    </div>
+    <div class="warn" style="margin-bottom:12px">
+      订阅拉取后会自动更新节点池：新增节点自动加入，内容变化的节点原地更新（环境绑定不会断），订阅里已删除的节点会同步移除。手动导入的节点不受影响。
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>名称</th>
+            <th>订阅地址</th>
+            <th style="width:70px">节点数</th>
+            <th style="width:150px">上次同步</th>
+            <th style="width:100px">状态</th>
+            <th style="width:200px">操作</th>
+          </tr>
+        </thead>
+        <tbody id="subBody"><tr><td colspan="6" class="empty">还没有订阅</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- ========== 窗口同步面板 ========== -->
+  <div id="panel-sync" style="display:none">
+    <div class="warn" style="margin-bottom:14px">
+      在一个窗口里的操作会实时同步到其他窗口。只同步到<b>已启动</b>的环境。点击和输入通过 CSS 选择器定位元素，因此各窗口需要处于同一站点、页面结构一致，同步才准确。
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px">选择主窗口</div>
+        <div class="field">
+          <label>主窗口（你在这里操作）</label>
+          <select id="sync-master"></select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px">同步内容</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="font-size:12px"><input type="checkbox" class="checkbox" id="opt-click" checked> 点击</label>
+          <label style="font-size:12px"><input type="checkbox" class="checkbox" id="opt-input" checked> 输入</label>
+          <label style="font-size:12px"><input type="checkbox" class="checkbox" id="opt-scroll" checked> 滚动</label>
+          <label style="font-size:12px"><input type="checkbox" class="checkbox" id="opt-keypress" checked> 按键</label>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label>同步延迟（毫秒）</label>
+          <input type="number" id="opt-delay" value="120" min="0" max="3000">
+          <div class="hint">每个从窗口之间间隔，避免同时请求触发风控</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-title" style="margin-bottom:12px">选择从窗口（跟随操作）</div>
+      <div id="sync-slaves" class="slave-list"></div>
+    </div>
+    <div style="display:flex;gap:9px;margin-top:14px;flex-wrap:wrap">
+      <button onclick="startSync()">开始同步</button>
+      <button class="ghost" onclick="stopSync()">停止全部</button>
+      <button class="ghost sm" onclick="loadSync()">刷新</button>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-title" style="margin-bottom:10px">运行中的会话</div>
+      <div id="syncSessions" class="muted" style="font-size:12px">暂无</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-title" style="margin-bottom:10px">同步日志</div>
+      <div id="syncLog" class="mono" style="font-size:11px;max-height:240px;overflow:auto;color:#9096a3">暂无</div>
+    </div>
+  </div>
+</div>
+<div id="msg" class="msg"></div>
+<!-- 新建环境 -->
+<div id="createModal" class="modal-bg">
+  <div class="modal">
+    <h2>新建环境</h2>
+    <div class="warn">不配节点则该环境走本机 IP。多账号务必每个环境配不同出口，否则平台可直接关联。</div>
+    <div class="row2">
+      <div class="field">
+        <label>环境编号 *</label>
+        <input type="text" id="f-id" placeholder="taobao-06">
+        <div class="hint">字母数字下划线短横线，创建后不可改</div>
+      </div>
+      <div class="field">
+        <label>显示名称</label>
+        <input type="text" id="f-name" placeholder="店铺A">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>平台</label>
+        <input type="text" id="f-platform" value="淘宝">
+      </div>
+      <div class="field">
+        <label>启动网址</label>
+        <input type="text" id="f-url" value="https://www.taobao.com">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>浏览器内核</label>
+        <select id="f-backend" onchange="renderKernelVersions('f')">
+          <option value="firefox" selected>Firefox · 本地内核（推荐）</option>
+          <option value="local">本地 Chrome · CDP 指纹</option>
+        </select>
+        <div class="hint">默认使用本地 Firefox，不依赖任何外部指纹浏览器</div>
+      </div>
+      <div class="field">
+        <label>内核版本</label>
+        <select id="f-kernelver">
+          <option value="150.0">Firefox 150.0</option>
+        </select>
+        <div class="hint">已安装版本来自「内核」页</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>备注</label>
+      <input type="text" id="f-remark" placeholder="账号用途、绑定手机等">
+    </div>
+    <div class="field">
+      <label>绑定节点</label>
+      <select id="f-node"><option value="">不绑定（走本机网络）</option></select>
+      <div class="hint">先在「节点池」导入节点，这里才有可选内容</div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('createModal')">取消</button>
+      <button onclick="submitCreate()">创建</button>
+    </div>
+  </div>
+</div>
+<!-- 导入配置 -->
+<div id="importCfgModal" class="modal-bg">
+  <div class="modal wide">
+    <h2>导入配置</h2>
+    <div class="warn">导入时已存在的环境、节点、订阅会跳过，不会覆盖。指纹只补缺失的，已有环境的设备身份保持不变（避免平台触发验证）。</div>
+    <div id="importCfgResult"></div>
+    <div class="field">
+      <label>选择配置文件（.json）</label>
+      <input type="file" id="cfg-file" accept=".json" onchange="readCfgFile(this)">
+    </div>
+    <div class="field">
+      <label>或直接粘贴 JSON</label>
+      <textarea id="cfg-text" rows="10" placeholder='{"version":1,"environments":[...]}'></textarea>
+    </div>
+    <div class="field">
+      <label>已存在的环境</label>
+      <select id="cfg-overwrite">
+        <option value="0">跳过（推荐）</option>
+        <option value="1">覆盖环境配置（指纹仍保留）</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('importCfgModal')">关闭</button>
+      <button onclick="doImportConfig()">开始导入</button>
+    </div>
+  </div>
+</div>
+<!-- Excel 批量导入 -->
+<div id="excelModal" class="modal-bg">
+  <div class="modal wide">
+    <h2>Excel 批量导入环境</h2>
+    <div class="warn">
+      支持 .xlsx / .xlsm / .csv。必需列「环境编号」，其余列可选。<br>
+      表头支持中英文（环境编号/编号/id、代理服务器/服务器/ip 等），列顺序随意。<br>
+      若填写了代理服务器，会自动创建对应节点并绑定。
+    </div>
+    <div id="excelResult"></div>
+    <div class="field">
+      <label>选择文件</label>
+      <input type="file" id="excel-file" accept=".xlsx,.xlsm,.csv">
+    </div>
+    <div style="display:flex;gap:9px;align-items:center">
+      <button class="ghost sm" onclick="downloadTemplate()">下载模板</button>
+      <span class="hint" style="margin:0">建议先下载模板，按列填写</span>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('excelModal')">关闭</button>
+      <button onclick="doExcelImport()">开始导入</button>
+    </div>
+  </div>
+</div>
+<!-- Cookie 导入导出 -->
+<div id="cookieModal" class="modal-bg">
+  <div class="modal wide">
+    <h2>Cookie 管理</h2>
+    <div class="warn">
+      导出前必须停止该环境（Chrome 会锁住 cookie 库）。<br>
+      导入的 cookie 以明文写入，Chrome 下次启动会重新加密。<br>
+      跨机器迁移请用「导出明文 → 目标机导入」的方式。
+    </div>
+    <div id="cookieBody"></div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('cookieModal')">关闭</button>
+    </div>
+  </div>
+</div>
+<!-- 动态 IP 提取器 -->
+<div id="dynModal" class="modal-bg">
+  <div class="modal">
+    <h2>动态 IP 提取器</h2>
+    <div class="warn">
+      填写代理服务商提供的「提取链接」，每次启动环境时自动拉一个新 IP 使用。<br>
+      链接只能是 http/https，不能指向本机或内网。
+    </div>
+    <div id="dynResult"></div>
+    <div class="field">
+      <label>启用</label>
+      <select id="dyn-enabled">
+        <option value="0">关闭</option>
+        <option value="1">启用</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>提取链接</label>
+      <input type="text" id="dyn-url" placeholder="https://provider.com/api/get?token=xxx&num=1">
+      <div class="hint">支持返回 host:port、user:pass@host:port、JSON 等常见格式</div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('dynModal')">取消</button>
+      <button class="ghost" onclick="testDynIp()">测试提取</button>
+      <button onclick="saveDynIp()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 分组与标签 / 指纹模式 -->
+<div id="groupModal" class="modal-bg">
+  <div class="modal">
+    <h2>环境设置</h2>
+    <div class="field">
+      <label>分组</label>
+      <input type="text" id="g-group" placeholder="例如 店铺组A" list="group-list">
+      <datalist id="group-list"></datalist>
+    </div>
+    <div class="field">
+      <label>标签（逗号分隔，最多 8 个）</label>
+      <input type="text" id="g-tags" placeholder="主力, 已认证">
+      <div class="hint">用于筛选和标记用途，例如「主力」「备用」「已实名」</div>
+    </div>
+    <div class="field">
+      <label>指纹模式</label>
+      <select id="g-fpmode">
+        <option value="stable">固定（推荐）— 每次启动身份不变，登录态稳定</option>
+        <option value="random">随机 — 每次启动重新生成整套设备身份</option>
+      </select>
+      <div class="hint">随机模式适合「只逛不登录」的号池；已登录店铺账号请用固定，否则平台会因设备突变触发验证</div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>浏览器内核</label>
+        <select id="g-backend" onchange="renderKernelVersions('g')">
+          <option value="firefox">Firefox · 本地内核（推荐）</option>
+          <option value="local">本地 Chrome · CDP 指纹</option>
+        </select>
+        <div class="hint">切换后端后需要重新启动环境才生效</div>
+      </div>
+      <div class="field">
+        <label>内核版本</label>
+        <select id="g-kernelver">
+          <option value="150.0">Firefox 150.0</option>
+        </select>
+        <div class="hint">可选已安装的 Firefox 版本</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('groupModal')">取消</button>
+      <button onclick="saveGroup()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 添加成员 -->
+<div id="memberModal" class="modal-bg">
+  <div class="modal">
+    <h2 id="mTitle">添加成员</h2>
+    <div class="field">
+      <label>用户名 *</label>
+      <input type="text" id="m-username" placeholder="字母数字下划线中文，2-32位">
+    </div>
+    <div class="row2">
+      <div class="field"><label>显示名</label><input type="text" id="m-display" placeholder="如：小王"></div>
+      <div class="field">
+        <label>角色</label>
+        <select id="m-role">
+          <option value="operator">操作员（启动/停止/同步）</option>
+          <option value="manager">运维（管理环境与节点）</option>
+          <option value="admin">管理员（全部权限）</option>
+          <option value="viewer">只读</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>密码 *（至少6位）</label><input type="password" id="m-password"></div>
+    <div class="field">
+      <label>环境范围（按住 Ctrl 多选；不选 = 全部环境）</label>
+      <select id="m-scope" multiple size="5" style="height:auto"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('memberModal')">取消</button>
+      <button onclick="submitMember()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 代理链编辑 -->
+<!-- 代理链编辑 -->
+<div id="chainModal" class="modal-bg">
+  <div class="modal wide">
+    <h2>多级代理链</h2>
+    <div id="chainBody"></div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('chainModal')">取消</button>
+      <button class="ghost" onclick="testChain()">测试连通</button>
+      <button onclick="saveChain()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 登录 -->
+<div id="loginModal" class="modal-bg">
+  <div class="modal" style="max-width:400px">
+    <h2>登录</h2>
+    <div id="loginMsg"></div>
+    <div class="field">
+      <label>用户名</label>
+      <input type="text" id="l-user" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>密码</label>
+      <input type="password" id="l-pass" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="modal-actions" style="gap:8px">
+      <button class="ghost" onclick="openRegister()">注册新用户</button>
+      <button onclick="doLogin()">登录</button>
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:12px">
+      <a href="#" onclick="openRecover();return false" style="color:var(--text-3);text-decoration:none">忘记管理员密码？</a>
+    </div>
+    <div class="hint" style="text-align:center;margin-top:8px">界面版本 2026-11-08.3</div>
+  </div>
+</div>
+<!-- 注册 / 首次初始化 -->
+<div id="registerModal" class="modal-bg">
+  <div class="modal" style="max-width:420px">
+    <h2>注册新用户</h2>
+    <div class="warn" id="regNote">
+      首次注册会成为管理员；已有成员时注册为「待授权只读账号」，需管理员分配环境后才能看到数据。
+    </div>
+    <div class="field">
+      <label>用户名 *</label>
+      <input type="text" id="r-user" autocomplete="username" placeholder="2-32 位，字母/数字/中文">
+    </div>
+    <div class="field">
+      <label>显示名</label>
+      <input type="text" id="r-display" placeholder="留空则用用户名">
+    </div>
+    <div class="field">
+      <label>密码 *</label>
+      <input type="password" id="r-pass" autocomplete="new-password" placeholder="至少 6 位">
+    </div>
+    <div class="field">
+      <label>确认密码 *</label>
+      <input type="password" id="r-pass2" autocomplete="new-password"
+             onkeydown="if(event.key==='Enter')doRegister()">
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('registerModal');showLogin('')">返回登录</button>
+      <button onclick="doRegister()">注册并登录</button>
+    </div>
+  </div>
+</div>
+<!-- 重置管理员密码 -->
+<div id="recoverModal" class="modal-bg">
+  <div class="modal" style="max-width:420px">
+    <h2>重置管理员密码</h2>
+    <div class="warn">
+      仅限本机操作，不需要旧密码；重置后该管理员的旧会话全部失效。
+    </div>
+    <div class="field">
+      <label>管理员用户名 *</label>
+      <input type="text" id="rc-user" list="admin-list" autocomplete="username">
+      <datalist id="admin-list"></datalist>
+      <div class="hint">下拉里会列出本机现有管理员账号</div>
+    </div>
+    <div class="field">
+      <label>新密码 *</label>
+      <input type="password" id="rc-pass" autocomplete="new-password" placeholder="至少 6 位">
+    </div>
+    <div class="field">
+      <label>确认新密码 *</label>
+      <input type="password" id="rc-pass2" autocomplete="new-password"
+             onkeydown="if(event.key==='Enter')doRecover()">
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('recoverModal');showLogin('')">返回登录</button>
+      <button onclick="doRecover()">重置并登录</button>
+    </div>
+  </div>
+</div>
+<!-- 克隆环境 -->
+<div id="cloneModal" class="modal-bg">
+  <div class="modal">
+    <h2>克隆环境</h2>
+    <div class="warn">克隆会复制设备身份（屏幕、硬件、显卡、语言、时区、UA）和节点配置。建议开启「噪声独立」，否则两个环境的 Canvas/Audio 指纹完全相同，容易被关联识别为同一设备。</div>
+    <div class="field">
+      <label>源环境</label>
+      <input type="text" id="c-source" readonly style="opacity:.7">
+    </div>
+    <div class="field">
+      <label>新环境编号 *</label>
+      <input type="text" id="c-target" placeholder="taobao-06">
+      <div class="hint">字母数字下划线短横线，不能与现有环境重复</div>
+    </div>
+    <div class="field">
+      <label>显示名称</label>
+      <input type="text" id="c-name" placeholder="留空则用「源名称-副本」">
+    </div>
+    <div class="field">
+      <label>绑定节点</label>
+      <select id="c-node"></select>
+      <div class="hint">默认沿用源环境的节点</div>
+    </div>
+    <div class="field">
+      <label>指纹处理</label>
+      <select id="c-vary">
+        <option value="1">噪声独立（推荐，Canvas/Audio 不同）</option>
+        <option value="0">完全复制（指纹完全相同，有风险）</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('cloneModal')">取消</button>
+      <button onclick="submitClone()">克隆</button>
+    </div>
+  </div>
+</div>
+<!-- 指纹对比 -->
+<div id="compareModal" class="modal-bg">
+  <div class="modal wide">
+    <h2>指纹对比</h2>
+    <div id="compareBody" style="max-height:60vh;overflow:auto"></div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('compareModal')">关闭</button>
+    </div>
+  </div>
+</div>
+<!-- 添加订阅 -->
+<div id="subModal" class="modal-bg">
+  <div class="modal">
+    <h2>添加订阅</h2>
+    <div class="warn">订阅地址只能是 http/https，且不能指向本机或内网。添加后会立即同步一次。</div>
+    <div class="field">
+      <label>订阅地址 *</label>
+      <input type="text" id="s-url" placeholder="https://example.com/api/v1/client/subscribe?token=xxx">
+      <div class="hint">支持返回 Clash / V2Ray 分享链接格式的订阅；整段 base64 也能识别</div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>名称</label>
+        <input type="text" id="s-name" placeholder="例如 机场A">
+      </div>
+      <div class="field">
+        <label>分组标签</label>
+        <input type="text" id="s-group" placeholder="例如 订阅节点">
+      </div>
+    </div>
+    <div class="field">
+      <label>自动分配</label>
+      <select id="s-assign">
+        <option value="0">仅加入节点池</option>
+        <option value="1">新增节点自动分配给空闲环境</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('subModal')">取消</button>
+      <button onclick="submitSub()">添加并同步</button>
+    </div>
+  </div>
+</div>
+<!-- 导入节点 -->
+<div id="importModal" class="modal-bg">
+  <div class="modal wide">
+    <h2>批量导入节点</h2>
+    <div id="importResult"></div>
+    <div class="field">
+      <label>方式一：粘贴分享链接（每行一条，支持 vless / vmess / trojan / hysteria2 / socks5 / http）</label>
+      <textarea id="imp-text" rows="8" placeholder="vless://uuid@1.2.3.4:443?security=reality&sni=...&pbk=...#香港01
+trojan://password@5.6.7.8:443?sni=example.com#日本02
+socks5://user:pass@9.8.7.6:1080#代理03"></textarea>
+      <div class="hint">也支持直接粘贴整段 base64 订阅内容</div>
+    </div>
+    <div class="field">
+      <label>方式二：订阅 URL（仅 http/https，禁止内网地址）</label>
+      <input type="text" id="imp-url" placeholder="https://example.com/subscribe?token=xxx">
+    </div>
+    <div class="row3">
+      <div class="field">
+        <label>分组标签</label>
+        <input type="text" id="imp-group" placeholder="例如 香港">
+      </div>
+      <div class="field">
+        <label>导入后</label>
+        <select id="imp-assign">
+          <option value="0">仅加入节点池</option>
+          <option value="1">同时自动分配给空闲环境</option>
+        </select>
+      </div>
+      <div class="field" style="display:flex;align-items:flex-end">
+        <button onclick="doImport()" style="width:100%">开始导入</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('importModal')">关闭</button>
+    </div>
+  </div>
+</div>
+<!-- 分配节点 -->
+<div id="assignModal" class="modal-bg">
+  <div class="modal">
+    <h2>批量分配节点</h2>
+    <div class="warn">节点按顺序一一分配给所选环境。节点数少于环境数时，后面的环境保持原配置。</div>
+    <div class="field">
+      <label>选择环境（可多选）</label>
+      <select id="as-env" multiple size="6" style="height:auto"></select>
+    </div>
+    <div class="field">
+      <label>选择节点（可多选，按列表顺序分配）</label>
+      <select id="as-node" multiple size="6" style="height:auto"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('assignModal')">取消</button>
+      <button onclick="doAssign()">分配</button>
+    </div>
+  </div>
+</div>
+<script>
+let ENVS = [];
+let KERNEL_ITEMS = [];
+let NODES = [];
+let SELECTED = new Set();
+let NSELECTED = new Set();
+let CUR_TAB = 'envs';
+// ---------------- 登录会话 ----------------
+const Auth = {
+  token: localStorage.getItem('emm_token') || '',
+  user: null,
+  admins: [],
+};
+async function api(path, opts) {
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, (opts || {}).headers || {});
+  if (Auth.token) headers['Authorization'] = 'Bearer ' + Auth.token;
+  const r = await fetch(path, Object.assign({}, opts || {}, { headers }));
+  let j;
+  try { j = await r.json(); } catch (e) { j = { ok: false, error: '响应解析失败' }; }
+  // 会话过期：清 token，弹登录框
+  if (r.status === 401 && Auth.token) {
+    Auth.token = '';
+    localStorage.removeItem('emm_token');
+    showLogin('会话已过期，请重新登录');
+  }
+  if (j && j.authRequired) j.ok = false;
+  return j;
+}
+function showLogin(msg) {
+  document.getElementById('loginMsg').innerHTML = msg ? `<div class="warn">${esc(msg)}</div>` : '';
+  document.getElementById('loginModal').classList.add('show');
+}
+function applyLogin(j, welcome) {
+  Auth.token = j.token;
+  Auth.user = j.member;
+  localStorage.setItem('emm_token', j.token);
+  closeModal('loginModal');
+  closeModal('registerModal');
+  closeModal('recoverModal');
+  const name = j.member.displayName || j.member.username;
+  document.getElementById('loginBadge').textContent = '👤 ' + name;
+  document.getElementById('loginBadge').style.display = '';
+  toast(welcome || ('欢迎，' + name), 'ok');
+  load(); loadNodes(); loadSubs(); loadRecycle(); loadKernelOptions();
+}
+async function doLogin() {
+  const username = document.getElementById('l-user').value.trim();
+  const password = document.getElementById('l-pass').value;
+  if (!username || !password) { toast('请填写用户名和密码', 'err'); return; }
+  const r = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  const j = await r.json();
+  if (j.ok) {
+    applyLogin(j);
+  } else {
+    document.getElementById('loginMsg').innerHTML = `<div class="warn">${esc(j.error || '登录失败')}</div>`;
+  }
+}
+function openRegister() {
+  closeModal('loginModal');
+  document.getElementById('r-user').value = '';
+  document.getElementById('r-display').value = '';
+  document.getElementById('r-pass').value = '';
+  document.getElementById('r-pass2').value = '';
+  document.getElementById('regNote').textContent = Auth.admins.length
+    ? '已有管理员：本次注册为「待授权只读账号」，登录后看不到环境数据，需要管理员在「成员」页分配环境。'
+    : '当前还没有成员：首次注册会成为管理员，拥有全部权限。';
+  document.getElementById('registerModal').classList.add('show');
+}
+async function doRegister() {
+  const username = document.getElementById('r-user').value.trim();
+  const displayName = document.getElementById('r-display').value.trim();
+  const password = document.getElementById('r-pass').value;
+  const password2 = document.getElementById('r-pass2').value;
+  if (!username) { toast('请填写用户名', 'err'); return; }
+  if (password.length < 6) { toast('密码至少 6 位', 'err'); return; }
+  if (password !== password2) { toast('两次密码不一致', 'err'); return; }
+  const r = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, displayName }),
+  });
+  const j = await r.json();
+  if (j.ok) {
+    applyLogin(j, j.pending ? '注册成功，等待管理员分配环境' : '注册成功，已创建管理员');
+  } else {
+    document.getElementById('regNote').innerHTML = `<span style="color:var(--danger)">${esc(j.error || '注册失败')}</span>`;
+  }
+}
+function openRecover() {
+  closeModal('loginModal');
+  const list = document.getElementById('admin-list');
+  list.innerHTML = Auth.admins.map(u => `<option value="${esc(u)}"></option>`).join('');
+  document.getElementById('rc-user').value = Auth.admins[0] || '';
+  document.getElementById('rc-pass').value = '';
+  document.getElementById('rc-pass2').value = '';
+  document.getElementById('recoverModal').classList.add('show');
+}
+async function doRecover() {
+  const username = document.getElementById('rc-user').value.trim();
+  const password = document.getElementById('rc-pass').value;
+  const password2 = document.getElementById('rc-pass2').value;
+  if (!username) { toast('请填写管理员用户名', 'err'); return; }
+  if (password.length < 6) { toast('新密码至少 6 位', 'err'); return; }
+  if (password !== password2) { toast('两次密码不一致', 'err'); return; }
+  const r = await fetch('/api/auth/recover', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  const j = await r.json();
+  if (j.ok) {
+    applyLogin(j, '管理员密码已重置');
+  } else {
+    toast(j.error || '重置失败', 'err');
+  }
+}
+function doLogout() {
+  fetch('/api/auth/logout', { method: 'POST' });
+  Auth.token = '';
+  Auth.user = null;
+  localStorage.removeItem('emm_token');
+  document.getElementById('loginBadge').style.display = 'none';
+  showLogin('已退出登录');
+}
+async function checkAuth() {
+  const j = await api('/api/auth/status');
+  Auth.admins = j.admins || [];
+  if (j.memberSystem && !j.loggedIn) {
+    showLogin('');
+    return false;
+  }
+  if (j.loggedIn && j.member) {
+    Auth.user = j.member;
+    document.getElementById('loginBadge').textContent = '👤 ' + (j.member.displayName || j.member.username);
+    document.getElementById('loginBadge').style.display = '';
+  }
+  return true;
+}
+function toast(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg show ' + (type || '');
+  clearTimeout(window._t);
+  window._t = setTimeout(() => { el.className = 'msg ' + (type || ''); }, 4500);
+}
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function switchTab(tab) {
+  CUR_TAB = tab;
+  const titles = {
+    envs: '环境管理', kernels: '内核管理', nodes: '节点池',
+    subs: '订阅管理', sync: '窗口同步', recycle: '回收站',
+    members: '成员管理', cloud: '云端同步',
+  };
+  const pageTitle = document.getElementById('pageTitle');
+  if (pageTitle) pageTitle.textContent = titles[tab] || '多账号环境管理器';
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
+  document.getElementById('panel-envs').style.display = tab === 'envs' ? '' : 'none';
+  document.getElementById('panel-kernels').style.display = tab === 'kernels' ? '' : 'none';
+  document.getElementById('panel-nodes').style.display = tab === 'nodes' ? '' : 'none';
+  document.getElementById('panel-subs').style.display = tab === 'subs' ? '' : 'none';
+  document.getElementById('panel-sync').style.display = tab === 'sync' ? '' : 'none';
+  document.getElementById('panel-recycle').style.display = tab === 'recycle' ? '' : 'none';
+  document.getElementById('panel-members').style.display = tab === 'members' ? '' : 'none';
+  document.getElementById('panel-cloud').style.display = tab === 'cloud' ? '' : 'none';
+  if (tab === 'nodes') loadNodes();
+  if (tab === 'kernels') loadKernels();
+  if (tab === 'subs') loadSubs();
+  if (tab === 'sync') loadSync();
+  if (tab === 'recycle') loadRecycle();
+  if (tab === 'members') loadMembers();
+  if (tab === 'cloud') loadCloud();
+}
+// ---------------- 内核管理 ----------------
+function versionCompare(a, b) {
+  const pa = String(a || '').split('.').map(x => parseInt(x, 10) || 0);
+  const pb = String(b || '').split('.').map(x => parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d;
+  }
+  return 0;
+}
+function renderKernelVersions(prefix, selected) {
+  const type = document.getElementById(prefix + '-backend').value;
+  const sel = document.getElementById(prefix + '-kernelver');
+  if (!sel) return;
+  if (type === 'local') {
+    sel.innerHTML = '<option value="system">系统 Chrome</option>';
+    return;
+  }
+  const items = KERNEL_ITEMS
+    .filter(k => k.type === 'firefox' && k.installed)
+    .sort((a, b) => versionCompare(b.version, a.version));
+  if (!items.length) {
+    sel.innerHTML = '<option value="">请先到「内核」页安装</option>';
+    return;
+  }
+  sel.innerHTML = items.map(k =>
+    `<option value="${esc(k.version)}">Firefox ${esc(k.version)}</option>`
+  ).join('');
+  if (selected && items.some(k => k.version === selected)) {
+    sel.value = selected;
+  } else {
+    sel.selectedIndex = 0;
+  }
+}
+async function loadKernelOptions() {
+  const j = await api('/api/kernels');
+  if (!j.ok) return;
+  KERNEL_ITEMS = j.kernels || [];
+  renderKernelVersions('f');
+  if (document.getElementById('groupModal').classList.contains('show')) {
+    renderKernelVersions('g');
+  }
+}
+async function loadKernels() {
+  const j = await api('/api/kernels');
+  if (!j.ok) { toast(j.error || '内核状态加载失败', 'err'); return; }
+  const list = j.kernels || [];
+  KERNEL_ITEMS = list;
+  renderKernelVersions('f');
+  document.getElementById('kernelCards').innerHTML = list.map(k => {
+    const badge = k.installed
+      ? '<span class="tag green">已安装</span>'
+      : '<span class="tag gray">可安装</span>';
+    let action = '';
+    if (k.installed) {
+      action = '<button class="ghost sm" disabled>已安装</button>';
+    } else if (k.downloadable) {
+      action = `<button class="sm" onclick="downloadKernel('${esc(k.type)}','${esc(k.version)}')">下载并安装</button>`;
+    }
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div class="card-title">${esc(k.name)}</div>${badge}
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text-3);line-height:1.7">
+        <div>类型：${esc(k.type || '—')} · 版本：${esc(k.version || '—')}</div>
+        <div style="word-break:break-all">路径：${esc(k.path || '—')}</div>
+      </div>
+      <div style="margin-top:12px">${action}</div>
+    </div>`;
+  }).join('');
+  renderKernelJob(j.job);
+  if (j.job && ['downloading', 'verifying', 'extracting'].includes(j.job.state)) {
+    setTimeout(pollKernelJob, 1000);
+  }
+}
+function renderKernelJob(job) {
+  const box = document.getElementById('kernelJob');
+  if (!job || job.state === 'idle') { box.innerHTML = ''; return; }
+  const pct = Math.max(0, Math.min(100, job.progress || 0));
+  const color = job.state === 'error' ? 'var(--danger)'
+    : job.state === 'done' ? 'var(--success)' : 'var(--primary)';
+  const label = { downloading: '下载中', verifying: '校验中', extracting: '解压中', done: '完成', error: '失败' }[job.state] || job.state;
+  box.innerHTML = `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <b>${esc(label)}</b><span>${pct}%</span>
+    </div>
+    <div style="height:8px;background:#eef1f5;border-radius:6px;margin:10px 0;overflow:hidden">
+      <div style="width:${pct}%;height:100%;background:${color};transition:width .3s"></div>
+    </div>
+    <div style="font-size:12px;color:var(--text-3)">${esc(job.message || '')}
+      ${job.error ? '<br><span style="color:var(--danger)">' + esc(job.error) + '</span>' : ''}
+    </div>
+  </div>`;
+}
+async function downloadKernel(type, version) {
+  const j = await api('/api/kernels/download', {
+    method: 'POST',
+    body: JSON.stringify({ type: type || 'firefox', version: version || '150.0' }),
+  });
+  toast(j.message || (j.started ? '已开始下载' : '未开始下载'), j.ok ? 'ok' : 'err');
+  if (j.job) renderKernelJob(j.job);
+  if (j.started) pollKernelJob();
+}
+async function pollKernelJob() {
+  const j = await api('/api/kernels/job');
+  renderKernelJob(j.job);
+  if (j.job && ['downloading', 'verifying', 'extracting'].includes(j.job.state)) {
+    setTimeout(pollKernelJob, 1000);
+  } else {
+    loadKernels();
+  }
+}
+// ---------------- 窗口同步 ----------------
+let SYNC_SELECTED = new Set();
+async function loadSync() {
+  // 主窗口下拉：只列运行中的环境
+  const running = ENVS.filter(e => e.running);
+  const masterSel = document.getElementById('sync-master');
+  const prevMaster = masterSel.value;
+  masterSel.innerHTML = running.length
+    ? running.map(e => `<option value="${esc(e.id)}">${esc(e.name || e.id)} (${esc(e.id)})</option>`).join('')
+    : '<option value="">（没有运行中的环境）</option>';
+  if (prevMaster && running.some(e => e.id === prevMaster)) masterSel.value = prevMaster;
+  // 从窗口列表
+  const master = masterSel.value;
+  const box = document.getElementById('sync-slaves');
+  const slaves = running.filter(e => e.id !== master);
+  if (!slaves.length) {
+    box.innerHTML = '<div class="muted" style="font-size:12px">没有可用作从窗口的环境（需要至少 2 个运行中的环境）</div>';
+  } else {
+    box.innerHTML = slaves.map(e => {
+      const sel = SYNC_SELECTED.has(e.id);
+      return `<label class="slave-item ${sel ? 'sel' : ''}" onclick="toggleSlave('${esc(e.id)}', event)">
+        <input type="checkbox" class="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleSlave('${esc(e.id)}', event)">
+        <span>${esc(e.name || e.id)}</span>
+        <span class="mono muted" style="margin-left:auto;font-size:10.5px">${esc(e.id)}</span>
+      </label>`;
+    }).join('');
+  }
+  // 会话与日志
+  const j = await api('/api/sync/sessions');
+  const sessions = j.sessions || [];
+  const sessBox = document.getElementById('syncSessions');
+  sessBox.innerHTML = sessions.length
+    ? sessions.map(s => `<div style="padding:6px 0;border-bottom:1px solid #f0f2f5">
+        <span class="tag green">运行中</span>
+        <span style="margin-left:8px">主 <b>${esc(s.master)}</b> → 从 ${esc((s.slaves || []).join(', '))}</span>
+        <span class="muted" style="margin-left:8px">已同步 ${s.events} 次 · 开始于 ${esc(s.startedAt || '')}</span>
+        <button class="sm ghost" style="float:right" onclick="stopSyncOne('${esc(s.id)}')">停止</button>
+      </div>`).join('')
+    : '<span class="muted" style="font-size:12px">暂无运行中的会话</span>';
+  const log = j.log || [];
+  document.getElementById('syncLog').innerHTML = log.length
+    ? log.slice().reverse().map(l => `<div>[${esc(l.time)}] ${esc(l.text)}</div>`).join('')
+    : '暂无日志';
+}
+function toggleSlave(id, ev) {
+  if (ev) ev.preventDefault();
+  if (SYNC_SELECTED.has(id)) SYNC_SELECTED.delete(id);
+  else SYNC_SELECTED.add(id);
+  loadSync();
+}
+async function startSync() {
+  const master = document.getElementById('sync-master').value;
+  if (!master) { toast('请先启动至少 2 个环境', 'err'); return; }
+  const slaves = Array.from(SYNC_SELECTED).filter(s => s !== master);
+  if (!slaves.length) { toast('请选择至少一个从窗口', 'err'); return; }
+  const options = {
+    click: document.getElementById('opt-click').checked,
+    input: document.getElementById('opt-input').checked,
+    scroll: document.getElementById('opt-scroll').checked,
+    keypress: document.getElementById('opt-keypress').checked,
+    delayMs: Number(document.getElementById('opt-delay').value) || 0,
+  };
+  const j = await api('/api/sync/start', {
+    method: 'POST',
+    body: JSON.stringify({ master, slaves, options }),
+  });
+  if (j.ok) {
+    toast(`同步已开始：${master} → ${slaves.length} 个窗口`, 'ok');
+    loadSync();
+  } else {
+    toast(j.error || '启动失败', 'err');
+  }
+}
+async function stopSync() {
+  const j = await api('/api/sync/stop', { method: 'POST', body: JSON.stringify({}) });
+  toast(j.ok ? `已停止 ${j.stopped} 个会话` : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  loadSync();
+}
+async function stopSyncOne(id) {
+  await api('/api/sync/stop', { method: 'POST', body: JSON.stringify({ session: id }) });
+  toast('已停止');
+  loadSync();
+}
+// ---------------- 订阅 ----------------
+let SUBS = [];
+async function loadSubs() {
+  const j = await api('/api/subscriptions');
+  SUBS = j.subscriptions || [];
+  document.getElementById('subCount').textContent = `共 ${SUBS.length} 个订阅`;
+  const body = document.getElementById('subBody');
+  if (!SUBS.length) {
+    body.innerHTML = '<tr><td colspan="6" class="empty">还没有订阅，点「添加订阅」开始</td></tr>';
+    return;
+  }
+  body.innerHTML = SUBS.map(s => {
+    let status;
+    if (!s.enabled) {
+      status = '<span class="tag gray">已停用</span>';
+    } else if (s.lastError) {
+      status = `<span class="tag red" title="${esc(s.lastError)}">同步失败</span>`;
+    } else if (s.lastSync) {
+      status = '<span class="tag green">正常</span>';
+    } else {
+      status = '<span class="tag gray">未同步</span>';
+    }
+    return `<tr>
+      <td class="node-name">${esc(s.name)}</td>
+      <td class="mono muted" style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.url)}">${esc(s.url)}</td>
+      <td>${s.lastCount}</td>
+      <td class="mono muted">${esc(s.lastSync || '—')}</td>
+      <td class="env-status">${status}</td>
+      <td>
+        <div class="row-actions">
+          <button class="sm" onclick="syncSub('${esc(s.id)}')">同步</button>
+          <button class="sm ghost" onclick="toggleSub('${esc(s.id)}', ${s.enabled ? 'false' : 'true'})">${s.enabled ? '停用' : '启用'}</button>
+          <button class="sm danger" onclick="delSub('${esc(s.id)}')">删除</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function openSubModal() {
+  document.getElementById('s-url').value = '';
+  document.getElementById('s-name').value = '';
+  document.getElementById('subModal').classList.add('show');
+}
+async function submitSub() {
+  const url = document.getElementById('s-url').value.trim();
+  if (!url) { toast('请填写订阅地址', 'err'); return; }
+  if (!/^https?:\/\//i.test(url)) { toast('只支持 http/https 地址', 'err'); return; }
+  toast('添加并同步中…');
+  const j = await api('/api/subscriptions', {
+    method: 'POST',
+    body: JSON.stringify({
+      url,
+      name: document.getElementById('s-name').value.trim(),
+      group: document.getElementById('s-group').value.trim(),
+      autoAssign: document.getElementById('s-assign').value === '1',
+    }),
+  });
+  if (j.ok) {
+    const sync = j.sync || {};
+    if (sync.ok) {
+      let t = `同步成功：${sync.total} 个节点`;
+      if (sync.added) t += `，新增 ${sync.added}`;
+      if (sync.removed) t += `，移除 ${sync.removed}`;
+      toast(t, 'ok');
+    } else {
+      toast('订阅已添加，但同步失败: ' + (sync.error || '未知'), 'err');
+    }
+    closeModal('subModal');
+    loadSubs();
+    loadNodes();
+    load();
+  } else {
+    toast(j.error || '添加失败', 'err');
+  }
+}
+async function syncSub(id) {
+  toast('同步中…');
+  const j = await api(`/api/subscriptions/${id}/sync`, { method: 'POST' });
+  if (j.ok) {
+    let t = `同步完成：${j.total} 个节点`;
+    if (j.added) t += `，新增 ${j.added}`;
+    if (j.removed) t += `，移除 ${j.removed}`;
+    toast(t, 'ok');
+  } else {
+    toast('同步失败: ' + (j.error || '未知'), 'err');
+  }
+  loadSubs();
+  loadNodes();
+}
+async function syncAllSubs() {
+  if (!SUBS.length) { toast('还没有订阅', 'err'); return; }
+  toast('同步全部订阅中…');
+  const j = await api('/api/subscriptions/sync-all', { method: 'POST' });
+  if (j.ok) {
+    const results = Object.values(j.results || {});
+    const okCount = results.filter(r => r.ok).length;
+    toast(`已完成：成功 ${okCount} / 共 ${results.length}`, okCount === results.length ? 'ok' : 'err');
+  } else toast(j.error || '失败', 'err');
+  loadSubs();
+  loadNodes();
+}
+async function toggleSub(id, enabled) {
+  const j = await api(`/api/subscriptions/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
+  toast(j.ok ? (enabled ? '已启用' : '已停用') : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  loadSubs();
+}
+async function delSub(id) {
+  if (!confirm('删除该订阅？由它引入的节点会一并从节点池移除。')) return;
+  const j = await api(`/api/subscriptions/${id}`, { method: 'DELETE' });
+  toast(j.ok ? `已删除，移除 ${j.removedNodes} 个节点` : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  loadSubs();
+  loadNodes();
+  load();
+}
+// ---------------- 环境 ----------------
+async function load() {
+  const j = await api('/api/envs');
+  ENVS = j.envs || [];
+  const sb = document.getElementById('sbStatus');
+  sb.textContent = j.singbox ? 'sing-box 就绪' : 'sing-box 未安装';
+  sb.className = 'tag ' + (j.singbox ? 'green' : 'red');
+  const st = j.stats || {};
+  document.getElementById('stats').innerHTML =
+    `<div class="stat">环境 <b>${st.total || 0}</b></div>` +
+    `<div class="stat">运行 <b>${st.running || 0}</b></div>` +
+    `<div class="stat">已配节点 <b>${st.withNode || 0}</b></div>` +
+    `<div class="stat${st.noNode > 0 ? ' alert' : ''}">无节点 <b>${st.noNode || 0}</b></div>`;
+  await refreshFilterOptions();
+  renderEnvTable();
+  refreshNodeSelects();
+}
+/** 刷新筛选下拉的选项（分组、标签）。 */
+async function refreshFilterOptions() {
+  const j = await api('/api/groups');
+  const groups = j.groups || [];
+  const tags = j.tags || [];
+  const gsel = document.getElementById('filt-group');
+  const curG = gsel.value;
+  gsel.innerHTML = '<option value="">全部分组</option>' +
+    groups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+  if (groups.includes(curG)) gsel.value = curG;
+  const tsel = document.getElementById('filt-tag');
+  const curT = tsel.value;
+  tsel.innerHTML = '<option value="">全部标签</option>' +
+    tags.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  if (tags.includes(curT)) tsel.value = curT;
+  const dl = document.getElementById('group-list');
+  if (dl) dl.innerHTML = groups.map(g => `<option value="${esc(g)}">`).join('');
+}
+/** 按当前筛选条件过滤环境。 */
+function filteredEnvs() {
+  const text = (document.getElementById('filt-text').value || '').trim().toLowerCase();
+  const group = document.getElementById('filt-group').value;
+  const tag = document.getElementById('filt-tag').value;
+  const status = document.getElementById('filt-status').value;
+  return ENVS.filter(e => {
+    if (group && (e.group || '') !== group) return false;
+    if (tag && !(e.tags || []).includes(tag)) return false;
+    if (status === 'running' && !e.running) return false;
+    if (status === 'stopped' && e.running) return false;
+    if (status === 'locked' && !e.locked) return false;
+    if (status === 'nonode' && e.node) return false;
+    if (text) {
+      const hay = [e.id, e.name, e.remark, e.group, (e.tags || []).join(' ')]
+        .join(' ').toLowerCase();
+      if (!hay.includes(text)) return false;
+    }
+    return true;
+  });
+}
+function rowAction(id, action) {
+  if (action === 'cookie') openCookieMgr(id);
+  else if (action === 'dynip') openDynIp(id);
+  else if (action === 'chain') openChainEditor(id);
+  else if (action === 'test') testEnvProxy(id);
+  else if (action === 'lock') openLockModal(id);
+  else if (action === 'unlock') unlockEnv(id);
+  else if (action === 'clone') openClone(id);
+  else if (action === 'recycle') recycleEnv(id);
+}
+
+function renderEnvTable() {
+  const body = document.getElementById('envBody');
+  const list = filteredEnvs();
+  const counter = document.getElementById('filtCount');
+  if (counter) counter.textContent = `显示 ${list.length} / ${ENVS.length}`;
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="8" class="empty">' +
+      (ENVS.length ? '没有符合筛选条件的环境' : '还没有环境，点「新建环境」开始') +
+      '</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(e => {
+    const f = e.fingerprint || {};
+    const node = e.node;
+    const sel = SELECTED.has(e.id);
+    const locked = !!e.locked;
+    const status = e.running
+      ? '<span class="dot on"></span> 运行'
+      : '<span class="dot off"></span> 停止';
+    const lockIcon = locked ? '<span title="已上锁" style="margin-left:4px">🔒</span>' : '';
+    let backend = e.browserBackend || 'local';
+    if (backend === 'ads') backend = 'firefox';
+    const backendBadge = backend === 'firefox'
+      ? `<span class="tag purple" style="font-size:10px">Firefox ${esc(e.kernelVersion || '150.0')}·本地</span>`
+      : '<span class="tag gray" style="font-size:10px">本地Chrome</span>';
+    // 分组 / 标签列
+    const groupText = e.group
+      ? `<div style="font-size:11px;color:#7ea8e8">${esc(e.group)}</div>`
+      : '<div class="muted" style="font-size:11px">—</div>';
+    const tagChips = (e.tags || []).map(t => `<span class="tagchip">${esc(t)}</span>`).join('');
+    // 指纹模式徽标：随机模式醒目提示
+    const fpBadge = (e.fpMode === 'random')
+      ? '<div style="margin-top:2px"><span class="tag purple" title="每次启动重新生成指纹">🎲 随机</span></div>'
+      : '';
+    const groupCell = groupText + (tagChips ? `<div style="margin-top:2px">${tagChips}</div>` : '') + fpBadge;
+    // 代理列：链条 > 动态IP > 单节点 > 无
+    const chain = e.chainNodes || [];
+    const dyn = e.dynamicIp || {};
+    let proxyCell;
+    if (chain.length) {
+      proxyCell = `<span class="tag purple" title="${esc(chain.map(c => c.name).join(' → '))}">${chain.length}级链</span>`;
+    } else if (dyn.enabled && dyn.url) {
+      proxyCell = '<span class="tag green" title="' + esc(dyn.url) + '">动态IP</span>';
+    } else if (node) {
+      proxyCell = `<span class="tag ${node.reality ? 'purple' : (node.tls ? 'blue' : 'gray')}">${esc(node.protocol)}</span>
+        <span class="node-name" style="margin-left:4px;font-size:11.5px">${esc(node.name)}</span>`;
+    } else {
+      proxyCell = '<span class="tag red">无节点</span>';
+    }
+    // 出口
+    let exitNode = chain.length ? chain[0] : node;
+    let exitCell;
+    if (dyn.enabled && dyn.lastIp) {
+      exitCell = `<span class="mono" style="color:#6ec98a">${esc(dyn.lastIp)}</span>`;
+    } else if (exitNode) {
+      exitCell = `<span class="mono muted">${esc(exitNode.server)}:${exitNode.port}</span>`;
+    } else {
+      exitCell = '<span class="muted">本机 IP</span>';
+    }
+    const uaMajor = esc(f.ua || '-').split('.')[0];
+    const fpCell = `
+      <div class="fp-main mono">${esc(f.screen || '-')}</div>
+      <div class="fp-sub">${f.cores || '-'} 核 / ${f.memory || '-'}G · UA ${uaMajor}</div>
+      <div class="fp-sub fp-gpu" title="${esc(f.gpu || '')}">${esc(f.gpu || '-')}</div>`;
+    const moreMenu = `
+      <select class="more-select" onchange="rowAction('${esc(e.id)}', this.value); this.value=''">
+        <option value="">更多</option>
+        <option value="cookie">Cookie</option>
+        <option value="dynip">动态 IP</option>
+        <option value="chain">代理链</option>
+        <option value="test">测速</option>
+        <option value="${locked ? 'unlock' : 'lock'}">${locked ? '解锁' : '上锁'}</option>
+        <option value="clone">克隆</option>
+        <option value="recycle">移入回收站</option>
+      </select>`;
+    return `<tr class="${sel ? 'sel' : ''}">
+      <td><input type="checkbox" class="checkbox" ${sel ? 'checked' : ''} onchange="toggleSel('${esc(e.id)}', this)"></td>
+      <td>
+        <div style="font-weight:500">${esc(e.name || e.id)}${lockIcon}</div>
+        <div class="mono muted" style="font-size:10.5px">${esc(e.id)}</div>
+        <div style="margin-top:2px">${backendBadge}</div>
+      </td>
+      <td>${status}</td>
+      <td>${groupCell}</td>
+      <td>${fpCell}</td>
+      <td>${proxyCell}</td>
+      <td>${exitCell}</td>
+      <td>
+        <div class="row-actions">
+          ${e.running
+            ? `<button class="sm ghost" onclick="envAct('${esc(e.id)}','stop')">停止</button>`
+            : `<button class="sm" onclick="envAct('${esc(e.id)}','start')">启动</button>`}
+          <button class="sm ghost" onclick="openGroupEditor('${esc(e.id)}')">分组</button>
+          ${moreMenu}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  updateSelUI();
+}
+async function envAct(id, action) {
+  if (action === 'start') {
+    toast('启动中…');
+    const j = await withPassword(id, (pwd) => api(`/api/envs/${id}/start`, {
+      method: 'POST', body: JSON.stringify({ password: pwd }),
+    }));
+    if (j.ok && j.warning) {
+      toast(`已启动 ${id}，但控制层警告：${j.warning}`, 'err');
+    } else {
+      toast(j.ok ? `已启动 ${id}` : (j.error || '启动失败'), j.ok ? 'ok' : 'err');
+    }
+  } else if (action === 'stop') {
+    const j = await withPassword(id, (pwd) => api(`/api/envs/${id}/stop`, {
+      method: 'POST', body: JSON.stringify({ password: pwd }),
+    }));
+    toast(j.ok ? '已停止 ' + id : (j.error || '停止失败'), j.ok ? 'ok' : 'err');
+  }
+  load();
+}
+async function testEnvProxy(id) {
+  toast('测试中…');
+  const j = await api(`/api/envs/${id}/proxy/test`, { method: 'POST' });
+  if (j.ok) {
+    const p = j.probe || {};
+    toast(`出口 ${p.ip || '?'} · ${p.country || ''} ${p.region || ''} ${p.isp || ''}`, 'ok');
+  } else {
+    toast('代理不通: ' + (j.error || (j.probe && j.probe.error) || '未知'), 'err');
+  }
+}
+function toggleSel(id, cb) {
+  if (cb.checked) SELECTED.add(id); else SELECTED.delete(id);
+  cb.closest('tr').classList.toggle('sel', cb.checked);
+  updateSelUI();
+}
+// ---------------- 分组与标签 ----------------
+let GROUP_ENV = '';
+function openGroupEditor(envId) {
+  const e = ENVS.find(x => x.id === envId);
+  if (!e) return;
+  GROUP_ENV = envId;
+  refreshFilterOptions();
+  document.getElementById('g-group').value = e.group || '';
+  document.getElementById('g-tags').value = (e.tags || []).join(', ');
+  document.getElementById('g-fpmode').value = e.fpMode || 'stable';
+  let backend = e.browserBackend || 'local';
+  if (backend === 'ads') backend = 'firefox';
+  document.getElementById('g-backend').value = backend;
+  renderKernelVersions('g', e.kernelVersion || '150.0');
+  document.getElementById('groupModal').classList.add('show');
+}
+async function saveGroup() {
+  const envId = GROUP_ENV;
+  const group = document.getElementById('g-group').value.trim();
+  const tagsRaw = document.getElementById('g-tags').value.trim();
+  const tags = tagsRaw
+    ? tagsRaw.replace(/，/g, ',').split(',').map(t => t.trim()).filter(Boolean)
+    : [];
+  const fpMode = document.getElementById('g-fpmode').value;
+  const browserBackend = document.getElementById('g-backend').value;
+  const kernelVersion = document.getElementById('g-kernelver').value;
+  if (browserBackend === 'firefox' && !kernelVersion) {
+    toast('请先到「内核」页安装 Firefox 内核', 'err');
+    return;
+  }
+  const j = await withPassword(envId, (pwd) => api(`/api/envs/${envId}/meta`, {
+    method: 'PATCH',
+    body: JSON.stringify({ group, tags, fpMode, browserBackend, kernelVersion, password: pwd }),
+  }));
+  if (j.ok) {
+    toast('已保存环境设置', 'ok');
+    closeModal('groupModal');
+    load();
+  } else {
+    toast(j.error || '保存失败', 'err');
+  }
+}
+async function bulkSetGroup() {
+  const ids = Array.from(SELECTED);
+  if (!ids.length) return;
+  const group = prompt(`给选中的 ${ids.length} 个环境设置分组（留空则清除）：`);
+  if (group === null) return;
+  let ok = 0;
+  for (const id of ids) {
+    const r = await withPassword(id, (pwd) => api(`/api/envs/${id}/meta`, {
+      method: 'PATCH',
+      body: JSON.stringify({ group: group.trim(), password: pwd }),
+    }));
+    if (r.ok) ok++;
+  }
+  toast(`已设置 ${ok} / ${ids.length} 个环境的分组`, ok === ids.length ? 'ok' : 'err');
+  load();
+}
+// ---------------- 回收站 ----------------
+let RECYCLE = [];
+let RSELECTED = new Set();
+async function loadRecycle() {
+  const j = await api('/api/recycle');
+  RECYCLE = j.items || [];
+  document.getElementById('recycleCount').textContent = `共 ${RECYCLE.length} 项`;
+  const body = document.getElementById('recycleBody');
+  if (!RECYCLE.length) {
+    body.innerHTML = '<tr><td colspan="6" class="empty">回收站为空</td></tr>';
+    return;
+  }
+  body.innerHTML = RECYCLE.map(r => {
+    const sel = RSELECTED.has(r.id);
+    return `<tr class="${sel ? 'sel' : ''}">
+      <td><input type="checkbox" class="checkbox" ${sel ? 'checked' : ''} onchange="toggleRecycleSel('${esc(r.id)}', this)"></td>
+      <td>
+        <div style="font-weight:500">${esc(r.name || r.id)}</div>
+        <div class="mono muted" style="font-size:10.5px">${esc(r.id)}</div>
+      </td>
+      <td class="muted">${esc(r.group || '—')}</td>
+      <td class="muted">${esc(r.nodeName || '—')}</td>
+      <td class="mono muted">${esc(r.deletedAt || '—')}</td>
+      <td>
+        <div class="row-actions">
+          <button class="sm" onclick="restoreEnv('${esc(r.id)}')">恢复</button>
+          <button class="sm danger" onclick="purgeOne('${esc(r.id)}')">彻底删除</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function toggleRecycleSel(id, cb) {
+  if (cb.checked) RSELECTED.add(id); else RSELECTED.delete(id);
+  cb.closest('tr').classList.toggle('sel', cb.checked);
+}
+function toggleAllRecycle(cb) {
+  RSELECTED = cb.checked ? new Set(RECYCLE.map(r => r.id)) : new Set();
+  loadRecycle();
+}
+async function recycleEnv(envId) {
+  if (!confirm(`把 ${envId} 移入回收站？\n可以随时恢复。`)) return;
+  const j = await withPassword(envId, (pwd) => api(`/api/envs/${envId}/recycle`, {
+    method: 'POST', body: JSON.stringify({ password: pwd }),
+  }));
+  toast(j.ok ? '已移入回收站' : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  load();
+}
+async function bulkRecycle() {
+  const ids = Array.from(SELECTED);
+  if (!ids.length) return;
+  if (!confirm(`把选中的 ${ids.length} 个环境移入回收站？`)) return;
+  let ok = 0;
+  for (const id of ids) {
+    const r = await withPassword(id, (pwd) => api(`/api/envs/${id}/recycle`, {
+      method: 'POST', body: JSON.stringify({ password: pwd }),
+    }));
+    if (r.ok) ok++;
+  }
+  toast(`已移入回收站 ${ok} / ${ids.length}`, ok === ids.length ? 'ok' : 'err');
+  SELECTED = new Set();
+  load();
+}
+async function restoreEnv(envId) {
+  const j = await api(`/api/envs/${envId}/restore`, { method: 'POST' });
+  toast(j.ok ? `已恢复 ${envId}` : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  loadRecycle();
+  load();
+}
+async function purgeOne(envId) {
+  if (!confirm(`彻底删除 ${envId}？\n浏览器数据目录也会一起删除，无法恢复。`)) return;
+  const j = await api('/api/recycle/purge', {
+    method: 'POST',
+    body: JSON.stringify({ ids: [envId], confirm: true }),
+  });
+  toast(j.ok ? '已彻底删除' : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  RSELECTED.delete(envId);
+  loadRecycle();
+}
+async function purgeSelected() {
+  const ids = Array.from(RSELECTED);
+  if (!ids.length) { toast('请先选择要删除的环境', 'err'); return; }
+  if (!confirm(`彻底删除选中的 ${ids.length} 个环境？无法恢复。`)) return;
+  const j = await api('/api/recycle/purge', {
+    method: 'POST',
+    body: JSON.stringify({ ids, confirm: true }),
+  });
+  toast(j.ok ? `已彻底删除 ${j.purged.length} 个` : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  RSELECTED = new Set();
+  loadRecycle();
+}
+// ---------------- 动态 IP ----------------
+let DYN_ENV = '';
+function openDynIp(envId) {
+  const e = ENVS.find(x => x.id === envId);
+  if (!e) return;
+  DYN_ENV = envId;
+  const dyn = e.dynamicIp || {};
+  document.getElementById('dyn-enabled').value = dyn.enabled ? '1' : '0';
+  document.getElementById('dyn-url').value = dyn.url || '';
+  document.getElementById('dynResult').innerHTML = '';
+  document.getElementById('dynModal').classList.add('show');
+}
+async function saveDynIp() {
+  const envId = DYN_ENV;
+  const enabled = document.getElementById('dyn-enabled').value === '1';
+  const url = document.getElementById('dyn-url').value.trim();
+  if (enabled && !url) { toast('启用时必须填写提取链接', 'err'); return; }
+  const j = await withPassword(envId, (pwd) => api(`/api/envs/${envId}/dynamic-ip`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled, url, password: pwd }),
+  }));
+  if (j.ok) {
+    toast(enabled ? '已启用动态 IP' : '已关闭动态 IP', 'ok');
+    closeModal('dynModal');
+    load();
+  } else {
+    toast(j.error || '保存失败', 'err');
+  }
+}
+async function testDynIp() {
+  const envId = DYN_ENV;
+  const url = document.getElementById('dyn-url').value.trim();
+  if (!url) { toast('请填写提取链接', 'err'); return; }
+  const box = document.getElementById('dynResult');
+  box.innerHTML = '<div class="ok-box">正在提取…</div>';
+  const j = await api(`/api/envs/${envId}/dynamic-ip/fetch`, {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+  if (j.ok) {
+    box.innerHTML = `<div class="ok-box">提取成功：${j.count} 个 IP<br>
+      预览：<span class="mono">${esc((j.preview || []).join(', '))}</span></div>`;
+  } else {
+    box.innerHTML = `<div class="warn">${esc(j.error || '提取失败')}</div>`;
+  }
+}
+// ---------------- Cookie 管理 ----------------
+let COOKIE_ENV = '';
+async function openCookieMgr(envId) {
+  const e = ENVS.find(x => x.id === envId);
+  if (!e) return;
+  COOKIE_ENV = envId;
+  const box = document.getElementById('cookieBody');
+  box.innerHTML = '<div class="muted">加载中…</div>';
+  document.getElementById('cookieModal').classList.add('show');
+  const isFirefox = (e.browserBackend || 'local') === 'firefox';
+  if (isFirefox) {
+    // 本地 Firefox 走 BiDi，必须在运行时才能读写 cookie
+    if (!e.running) {
+      box.innerHTML = '<div class="warn">Firefox 环境请先启动，再操作 cookie（BiDi 只能控制运行中的浏览器）。</div>';
+      return;
+    }
+  } else if (e.running) {
+    box.innerHTML = '<div class="warn">该环境正在运行，请先停止后再操作 cookie。</div>';
+    return;
+  }
+  renderCookieUI([]);
+}
+function renderCookieUI(rows) {
+  const box = document.getElementById('cookieBody');
+  box.innerHTML = `
+    <div class="row2" style="margin-bottom:10px">
+      <div class="field" style="margin:0">
+        <label>导出域名过滤（留空导出全部）</label>
+        <input type="text" id="ck-domain" placeholder="taobao.com">
+      </div>
+      <div class="field" style="margin:0;display:flex;align-items:flex-end;gap:8px">
+        <button class="sm" onclick="doExportCookies('json')">导出 JSON</button>
+        <button class="sm ghost" onclick="doExportCookies('netscape')">导出 Netscape</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>导入 cookie（JSON 数组 或 Netscape 格式）</label>
+      <textarea id="ck-import" rows="6" placeholder='[{"domain":".taobao.com","name":"cookie2","value":"xxx"}]'></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="sm" onclick="doImportCookies()">导入</button>
+      <button class="sm ghost" onclick="loadCookiePreview()">预览现有 cookie</button>
+    </div>
+    <div id="ck-preview" class="mono" style="font-size:11px;max-height:220px;overflow:auto;color:#9096a3"></div>
+  `;
+}
+async function doExportCookies(fmt) {
+  const domain = (document.getElementById('ck-domain').value || '').trim();
+  const q = new URLSearchParams({ format: fmt });
+  if (domain) q.set('domain', domain);
+  const j = await api(`/api/envs/${COOKIE_ENV}/cookies?` + q.toString());
+  if (!j.ok) { toast(j.error || '导出失败', 'err'); return; }
+  if (fmt === 'netscape') {
+    downloadText(j.content || '', `cookies-${COOKIE_ENV}.txt`);
+    toast(`已导出 ${j.count} 条（Netscape）`, 'ok');
+  } else {
+    downloadText(JSON.stringify(j.cookies || [], null, 2), `cookies-${COOKIE_ENV}.json`);
+    toast(`已导出 ${j.count} 条（JSON）`, 'ok');
+  }
+  if (j.note) toast(j.note, '');
+}
+async function doImportCookies() {
+  const content = document.getElementById('ck-import').value.trim();
+  if (!content) { toast('请粘贴要导入的 cookie', 'err'); return; }
+  const j = await withPassword(COOKIE_ENV, (pwd) => api(`/api/envs/${COOKIE_ENV}/cookies`, {
+    method: 'POST',
+    body: JSON.stringify({ content, password: pwd }),
+  }));
+  if (j.ok) {
+    const failed = (j.errors || []).length;
+    toast(`已导入 ${j.added} 条 cookie` + (failed ? `，${failed} 条失败` : ''),
+          failed ? 'err' : 'ok');
+    loadCookiePreview();
+  } else {
+    toast(j.error || '导入失败', 'err');
+  }
+}
+async function loadCookiePreview() {
+  const box = document.getElementById('ck-preview');
+  box.textContent = '读取中…';
+  const j = await api(`/api/envs/${COOKIE_ENV}/cookies?format=json`);
+  if (!j.ok) { box.textContent = j.error || '读取失败'; return; }
+  const rows = j.cookies || [];
+  if (!rows.length) { box.textContent = j.note || '没有 cookie'; return; }
+  box.innerHTML = rows.slice(0, 100).map(c => {
+    const v = c.encrypted ? '(已加密，无法显示)' : '<span style="color:#6ec98a">' + esc(String(c.value).slice(0, 40)) + '</span>';
+    return `<div>${esc(c.domain)} <span style="color:#7ea8e8">${esc(c.name)}</span> = ${v}</div>`;
+  }).join('') + (rows.length > 100 ? `<div class="muted">… 共 ${rows.length} 条</div>` : '');
+}
+// ---------------- 窗口布局 ----------------
+async function applyLayout(layout) {
+  const ids = Array.from(SELECTED);
+  if (!ids.length) { toast('请先勾选要排列的环境', 'err'); return; }
+  toast('排列中…');
+  const j = await api('/api/layout/apply', {
+    method: 'POST',
+    body: JSON.stringify({ layout, ids }),
+  });
+  if (j.ok) {
+    const moved = (j.results || []).filter(r => r.ok).length;
+    toast(`已按「${layout}」排列 ${moved} 个窗口`, 'ok');
+  } else {
+    toast(j.error || '排列失败', 'err');
+  }
+}
+// ---------------- 成员管理 ----------------
+let MEMBERS = [];
+async function loadMembers() {
+  const j = await api('/api/members');
+  if (!j.ok) {
+    document.getElementById('memberBody').innerHTML =
+      '<tr><td colspan="6" class="empty">' + esc(j.error || '无法加载') + '</td></tr>';
+    return;
+  }
+  MEMBERS = j.members || [];
+  const body = document.getElementById('memberBody');
+  if (!MEMBERS.length) {
+    body.innerHTML = '<tr><td colspan="6" class="empty">还没有成员，点「添加成员」开始</td></tr>';
+    return;
+  }
+  body.innerHTML = MEMBERS.map(m => {
+    const scope = m.pending
+      ? '待授权'
+      : (m.envScope || []).length
+      ? (m.envScope.length + ' 个环境')
+      : '全部环境';
+    const statusTag = m.pending
+      ? '<span class="tag red">待授权</span>'
+      : (m.enabled ? '<span class="tag green">启用</span>' : '<span class="tag red">停用</span>');
+    return `<tr>
+      <td class="node-name">${esc(m.username)}</td>
+      <td class="muted">${esc(m.displayName)}</td>
+      <td><span class="tag ${m.role === 'admin' ? 'purple' : (m.role === 'manager' ? 'blue' : 'gray')}">${esc(m.roleLabel)}</span></td>
+      <td class="muted">${esc(scope)}</td>
+      <td>${statusTag}</td>
+      <td><div class="row-actions">
+        <button class="sm ghost" onclick="editMember('${esc(m.username)}')">编辑</button>
+        <button class="sm ghost" onclick="toggleMember('${esc(m.username)}', ${m.enabled ? 'false' : 'true'})">${m.enabled ? '停用' : '启用'}</button>
+        <button class="sm danger" onclick="deleteMember('${esc(m.username)}')">删除</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+function openMemberModal() {
+  document.getElementById('mTitle').textContent = '添加成员';
+  document.getElementById('m-username').value = '';
+  document.getElementById('m-username').disabled = false;
+  document.getElementById('m-display').value = '';
+  // 没有成员时首个账号必须是管理员，否则启用成员系统后会锁死
+  document.getElementById('m-role').value = MEMBERS.length ? 'operator' : 'admin';
+  document.getElementById('m-password').value = '';
+  fillScopeSelect([]);
+  document.getElementById('memberModal').classList.add('show');
+}
+function fillScopeSelect(selected) {
+  const sel = document.getElementById('m-scope');
+  sel.innerHTML = ENVS.map(e =>
+    `<option value="${esc(e.id)}" ${selected.includes(e.id) ? 'selected' : ''}>${esc(e.name || e.id)}</option>`
+  ).join('');
+}
+function editMember(username) {
+  const m = MEMBERS.find(x => x.username === username);
+  if (!m) return;
+  document.getElementById('mTitle').textContent = '编辑成员';
+  document.getElementById('m-username').value = m.username;
+  document.getElementById('m-username').disabled = true;
+  document.getElementById('m-display').value = m.displayName;
+  document.getElementById('m-role').value = m.role;
+  document.getElementById('m-password').value = '';
+  fillScopeSelect(m.envScope || []);
+  document.getElementById('memberModal').classList.add('show');
+}
+async function submitMember() {
+  const username = document.getElementById('m-username').value.trim();
+  const editing = document.getElementById('m-username').disabled;
+  const password = document.getElementById('m-password').value;
+  const role = document.getElementById('m-role').value;
+  const scope = Array.from(document.getElementById('m-scope').selectedOptions).map(o => o.value);
+  if (!editing && !username) { toast('请填写用户名', 'err'); return; }
+  if (!editing && password.length < 6) { toast('密码至少 6 位', 'err'); return; }
+  let j;
+  if (editing) {
+    const body = { role, displayName: document.getElementById('m-display').value.trim(), envScope: scope };
+    if (password) body.password = password;
+    j = await api(`/api/members/${encodeURIComponent(username)}`, { method: 'PATCH', body: JSON.stringify(body) });
+  } else {
+    j = await api('/api/members', {
+      method: 'POST',
+      body: JSON.stringify({
+        username, password, role,
+        displayName: document.getElementById('m-display').value.trim(),
+        envScope: scope,
+      }),
+    });
+  }
+  if (j.ok) {
+    toast(editing ? '已更新' : '已添加成员', 'ok');
+    closeModal('memberModal');
+    loadMembers();
+  } else {
+    toast(j.error || '保存失败', 'err');
+  }
+}
+async function toggleMember(username, enabled) {
+  const j = await api(`/api/members/${encodeURIComponent(username)}`, {
+    method: 'PATCH', body: JSON.stringify({ enabled }),
+  });
+  toast(j.ok ? (enabled ? '已启用' : '已停用') : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  loadMembers();
+}
+async function deleteMember(username) {
+  if (!confirm(`删除成员 ${username}？`)) return;
+  const j = await api(`/api/members/${encodeURIComponent(username)}`, { method: 'DELETE' });
+  toast(j.ok ? '已删除' : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  loadMembers();
+}
+// ---------------- WebDAV 云端同步 ----------------
+async function loadCloud() {
+  const j = await api('/api/cloud/config');
+  if (!j.ok) return;
+  const c = j.config || {};
+  document.getElementById('cl-url').value = c.url || '';
+  document.getElementById('cl-user').value = c.username || '';
+  document.getElementById('cl-pass').value = '';
+  document.getElementById('cl-pass').placeholder = c.hasPassword ? '已保存，留空沿用' : '';
+  document.getElementById('cl-dir').value = c.directory || 'env-manager';
+  document.getElementById('cl-private').value = c.allowPrivate ? '1' : '0';
+  document.getElementById('cloudLast').textContent =
+    c.lastSync ? `上次同步：${c.lastSync}（${c.lastResult || '-'}）` : '从未同步';
+  cloudList();
+}
+function _cloudBodyFromUI() {
+  return {
+    url: document.getElementById('cl-url').value.trim(),
+    username: document.getElementById('cl-user').value.trim(),
+    password: document.getElementById('cl-pass').value.trim(),
+    directory: document.getElementById('cl-dir').value.trim(),
+    allowPrivate: document.getElementById('cl-private').value === '1',
+  };
+}
+async function saveCloud() {
+  const body = _cloudBodyFromUI();
+  if (!body.url) { toast('请填写服务器地址', 'err'); return; }
+  const j = await api('/api/cloud/config', { method: 'PUT', body: JSON.stringify(body) });
+  if (j.ok) { toast('云端配置已保存', 'ok'); loadCloud(); }
+  else toast(j.error || '保存失败', 'err');
+}
+async function testCloud() {
+  const body = _cloudBodyFromUI();
+  if (!body.url) { toast('请填写服务器地址', 'err'); return; }
+  const box = document.getElementById('cloudMsg');
+  box.innerHTML = '<div class="ok-box">测试连接中…</div>';
+  const j = await api('/api/cloud/test', { method: 'POST', body: JSON.stringify(body) });
+  box.innerHTML = j.ok
+    ? `<div class="ok-box">${esc(j.message)}</div>`
+    : `<div class="warn">${esc(j.message || '连接失败')}</div>`;
+}
+async function cloudBackup() {
+  toast('备份到云端…');
+  const j = await api('/api/cloud/backup', { method: 'POST' });
+  if (j.ok) {
+    toast(`已备份：${j.file}`, 'ok');
+    loadCloud();
+  } else {
+    toast(j.error || '备份失败', 'err');
+  }
+}
+async function cloudList() {
+  const j = await api('/api/cloud/list');
+  const body = document.getElementById('cloudFiles');
+  if (!j.ok || !(j.files || []).length) {
+    body.innerHTML = '<tr><td colspan="2" class="empty">' + esc(j.error || '尚无备份') + '</td></tr>';
+    return;
+  }
+  body.innerHTML = j.files.map(f => `<tr>
+    <td class="mono">${esc(f)}</td>
+    <td><div class="row-actions">
+      <button class="sm" onclick="cloudRestore('${esc(f)}')">恢复</button>
+    </div></td>
+  </tr>`).join('');
+}
+async function cloudRestore(file) {
+  if (!confirm(`从云端恢复 ${file}？\n已有环境不会被覆盖，只补缺失的；指纹保持不变。`)) return;
+  toast('恢复中…');
+  const j = await api('/api/cloud/restore', {
+    method: 'POST',
+    body: JSON.stringify({ file }),
+  });
+  if (j.ok) {
+    const r = j.result || {};
+    toast(`已恢复：环境 +${(r.environments || {}).added || 0}，节点 +${(r.nodes || {}).added || 0}`, 'ok');
+    load();
+    loadNodes();
+  } else {
+    toast(j.error || '恢复失败', 'err');
+  }
+}
+async function bulkExportCookies() {
+  const ids = Array.from(SELECTED);
+  if (!ids.length) return;
+  let okCount = 0;
+  let skipped = 0;
+  const all = {};
+  for (const id of ids) {
+    const e = ENVS.find(x => x.id === id);
+    if (e && e.running) { skipped++; continue; }
+    const j = await api(`/api/envs/${id}/cookies?format=json`);
+    if (j.ok && (j.cookies || []).length) {
+      all[id] = j.cookies;
+      okCount++;
+    }
+  }
+  if (!okCount) {
+    toast(`没有可导出的 cookie${skipped ? '（' + skipped + ' 个环境正在运行）' : ''}`, 'err');
+    return;
+  }
+  downloadText(JSON.stringify(all, null, 2), 'cookies-batch.json');
+  toast(`已导出 ${okCount} 个环境的 cookie${skipped ? '，跳过 ' + skipped + ' 个运行中的' : ''}`, 'ok');
+}
+function downloadText(text, filename) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 1000);
+}
+// ---------------- Excel 导入 ----------------
+function openExcelImport() {
+  document.getElementById('excelResult').innerHTML = '';
+  document.getElementById('excel-file').value = '';
+  document.getElementById('excelModal').classList.add('show');
+}
+function downloadTemplate() {
+  window.open('/api/envs/import-excel/template', '_blank');
+}
+async function doExcelImport() {
+  const input = document.getElementById('excel-file');
+  if (!input.files || !input.files[0]) { toast('请选择文件', 'err'); return; }
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  const box = document.getElementById('excelResult');
+  box.innerHTML = '<div class="ok-box">导入中…</div>';
+  try {
+    const r = await fetch('/api/envs/import-excel', { method: 'POST', body: fd });
+    const j = await r.json();
+    if (j.ok) {
+      let html = `<div class="ok-box">
+        新增环境 <b>${j.added}</b> 个，跳过 ${j.skipped} 个`;
+      if (j.nodesCreated) html += `，自动创建节点 ${j.nodesCreated} 个`;
+      html += `<br><span class="muted">${esc(j.message || '')}</span></div>`;
+      if (j.details && j.details.length) {
+        html += '<div class="warn">跳过的行：<ul style="margin:6px 0 0 16px">' +
+          j.details.map(d => `<li class="mono">${esc(d.id)} — ${esc(d.reason)}</li>`).join('') +
+          '</ul></div>';
+      }
+      box.innerHTML = html;
+      toast(`导入完成：新增 ${j.added} 个环境`, 'ok');
+      load();
+    } else {
+      box.innerHTML = `<div class="warn">${esc(j.error || '导入失败')}</div>`;
+      toast(j.error || '导入失败', 'err');
+    }
+  } catch (e) {
+    box.innerHTML = `<div class="warn">上传失败：${esc(String(e))}</div>`;
+    toast('上传失败', 'err');
+  }
+}
+function toggleAll(cb) {
+  const ids = ENVS.map(e => e.id);
+  SELECTED = cb.checked ? new Set(ids) : new Set();
+  load();
+}
+function clearSel() { SELECTED = new Set(); load(); }
+function updateSelUI() {
+  const bar = document.getElementById('envBulk');
+  const n = SELECTED.size;
+  document.getElementById('selCount').textContent = n;
+  bar.classList.toggle('show', n > 0);
+}
+async function bulkEnv(action) {
+  const ids = Array.from(SELECTED);
+  if (!ids.length) return;
+  if (action === 'delete' && !confirm(`删除 ${ids.length} 个环境？配置和指纹会删掉，浏览器数据保留。`)) return;
+  if (action === 'regen' && !confirm(`给 ${ids.length} 个环境换指纹？已登录账号可能触发验证。`)) return;
+  toast('处理中…');
+  const j = await api('/api/envs/batch', { method: 'POST', body: JSON.stringify({ action, ids }) });
+  if (j.ok) {
+    let t = `完成 ${j.done.length} 个`;
+    if (j.failed && j.failed.length) t += `，失败 ${j.failed.length}`;
+    toast(t, j.failed && j.failed.length ? 'err' : 'ok');
+    if (action === 'delete') SELECTED = new Set();
+  } else toast(j.error || '失败', 'err');
+  load();
+}
+async function startAll() {
+  toast('批量启动中…');
+  const j = await api('/api/start-all', { method: 'POST' });
+  if (j.ok) {
+    let t = `启动 ${j.started.length} 个`;
+    if (j.failed && j.failed.length) t += `，失败 ${j.failed.length}`;
+    toast(t, j.failed && j.failed.length ? 'err' : 'ok');
+  } else toast(j.error || '失败', 'err');
+  load();
+}
+async function stopAll() {
+  await api('/api/stop-all', { method: 'POST' });
+  toast('已全部停止');
+  load();
+}
+// ---------------- 节点池 ----------------
+async function loadNodes() {
+  const j = await api('/api/nodes');
+  NODES = j.nodes || [];
+  document.getElementById('nodeCount').textContent = `共 ${NODES.length} 个节点`;
+  const body = document.getElementById('nodeBody');
+  if (!NODES.length) {
+    body.innerHTML = '<tr><td colspan="9" class="empty">还没有节点，点「导入节点」开始</td></tr>';
+    return;
+  }
+  body.innerHTML = NODES.map(n => {
+    const sel = NSELECTED.has(n.id);
+    const feats = [];
+    if (n.reality) feats.push('<span class="tag purple">REALITY</span>');
+    else if (n.tls) feats.push('<span class="tag blue">TLS</span>');
+    if (n.transport) feats.push(`<span class="tag gray">${esc(n.transport)}</span>`);
+    if (!feats.length) feats.push('<span class="muted">—</span>');
+    return `<tr class="${sel ? 'sel' : ''}">
+      <td><input type="checkbox" class="checkbox" ${sel ? 'checked' : ''} onchange="toggleNodeSel('${esc(n.id)}', this)"></td>
+      <td class="node-name">${esc(n.name)}</td>
+      <td><span class="tag blue">${esc(n.protocol)}</span></td>
+      <td class="mono">${esc(n.server)}</td>
+      <td class="mono">${n.port}</td>
+      <td>${feats.join(' ')}</td>
+      <td class="muted">${esc(n.group || '—')}</td>
+      <td id="nprobe-${esc(n.id)}" class="mono muted">—</td>
+      <td>
+        <div class="row-actions">
+          <button class="sm" onclick="testNode('${esc(n.id)}')">测速</button>
+          <button class="sm danger" onclick="delNode('${esc(n.id)}')">删除</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  updateNodeSelUI();
+  refreshNodeSelects();
+}
+function toggleNodeSel(id, cb) {
+  if (cb.checked) NSELECTED.add(id); else NSELECTED.delete(id);
+  cb.closest('tr').classList.toggle('sel', cb.checked);
+  updateNodeSelUI();
+}
+function toggleAllNodes(cb) {
+  NSELECTED = cb.checked ? new Set(NODES.map(n => n.id)) : new Set();
+  loadNodes();
+}
+function clearNodeSel() { NSELECTED = new Set(); loadNodes(); }
+function updateNodeSelUI() {
+  const n = NSELECTED.size;
+  document.getElementById('nselCount').textContent = n;
+  document.getElementById('nodeBulk').classList.toggle('show', n > 0);
+}
+async function testNode(id) {
+  const cell = document.getElementById('nprobe-' + id);
+  if (cell) { cell.textContent = '测试中…'; cell.className = 'mono muted'; }
+  const j = await api(`/api/nodes/${id}/test`, { method: 'POST' });
+  if (j.ok) {
+    const p = j.probe || {};
+    const txt = `${p.ip || '?'} ${p.region || ''}`;
+    if (cell) { cell.textContent = txt; cell.className = 'mono'; cell.style.color = '#6ec98a'; }
+    toast(`节点可用 → ${txt}`, 'ok');
+  } else {
+    const err = (j.probe && j.probe.error) || j.error || '不通';
+    if (cell) { cell.textContent = '失败'; cell.className = 'mono'; cell.style.color = '#b88484'; }
+    toast('节点不可用: ' + String(err).slice(0, 120), 'err');
+  }
+}
+async function testAllNodes() {
+  if (!NODES.length) return;
+  toast(`开始测试 ${NODES.length} 个节点…`);
+  for (const n of NODES) {
+    await testNode(n.id);
+  }
+  toast('全部测试完成');
+}
+async function delNode(id) {
+  if (!confirm('删除该节点？已绑定它的环境会变为无节点。')) return;
+  const j = await api(`/api/nodes/${id}`, { method: 'DELETE' });
+  toast(j.ok ? '已删除' : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  loadNodes();
+}
+async function bulkDeleteNodes() {
+  const ids = Array.from(NSELECTED);
+  if (!ids.length) return;
+  if (!confirm(`删除 ${ids.length} 个节点？`)) return;
+  const j = await api('/api/nodes/batch-delete', { method: 'POST', body: JSON.stringify({ ids }) });
+  if (j.ok) {
+    toast(`已删除 ${j.removed} 个节点`, 'ok');
+    NSELECTED = new Set();
+  } else toast(j.error || '失败', 'err');
+  loadNodes();
+}
+// ---------------- 导入 ----------------
+function openImport() {
+  document.getElementById('importResult').innerHTML = '';
+  document.getElementById('importModal').classList.add('show');
+}
+async function doImport() {
+  const text = document.getElementById('imp-text').value.trim();
+  const url = document.getElementById('imp-url').value.trim();
+  const group = document.getElementById('imp-group').value.trim();
+  const autoAssign = document.getElementById('imp-assign').value === '1';
+  if (!text && !url) { toast('请填写分享链接或订阅地址', 'err'); return; }
+  toast('解析导入中…');
+  const j = await api('/api/nodes/import', {
+    method: 'POST',
+    body: JSON.stringify({ text, url, group, autoAssign }),
+  });
+  const box = document.getElementById('importResult');
+  if (j.ok) {
+    let html = `<div class="ok-box">成功导入 ${j.imported} 个节点`;
+    if (j.assigned && Object.keys(j.assigned).length) {
+      html += `　已自动分配给 ${Object.keys(j.assigned).length} 个环境`;
+    }
+    html += '</div>';
+    if (j.preview && j.preview.length) {
+      html += '<div style="font-size:11.5px;color:#9096a3;margin-bottom:11px">预览：' +
+        j.preview.map(p => `<div class="mono">${esc(p)}</div>`).join('') + '</div>';
+    }
+    if (j.errorCount) {
+      html += `<div class="warn">${j.errorCount} 条解析失败<ul style="margin:6px 0 0 16px">` +
+        (j.errors || []).map(e => `<li class="mono">${esc(e.input)} → ${esc(e.error)}</li>`).join('') +
+        '</ul></div>';
+    }
+    box.innerHTML = html;
+    toast(`导入 ${j.imported} 个节点`, 'ok');
+    loadNodes();
+    load();
+  } else {
+    box.innerHTML = `<div class="warn">${esc(j.error || '导入失败')}</div>`;
+    toast(j.error || '导入失败', 'err');
+  }
+}
+// ---------------- 分配 ----------------
+function refreshNodeSelects() {
+  const opts = NODES.length
+    ? NODES.map(n => `<option value="${esc(n.id)}">${esc(n.name)} · ${esc(n.protocol)} · ${esc(n.server)}</option>`).join('')
+    : '<option value="">（节点池为空）</option>';
+  const fnode = document.getElementById('f-node');
+  if (fnode) fnode.innerHTML = '<option value="">不绑定（走本机网络）</option>' + opts;
+  const asnode = document.getElementById('as-node');
+  if (asnode) asnode.innerHTML = opts;
+  const asenv = document.getElementById('as-env');
+  if (asenv) {
+    asenv.innerHTML = ENVS.length
+      ? ENVS.map(e => `<option value="${esc(e.id)}">${esc(e.name || e.id)} (${esc(e.id)})</option>`).join('')
+      : '<option value="">（暂无环境）</option>';
+  }
+}
+function openAssignModal() {
+  if (!NODES.length) { toast('节点池为空，先导入节点', 'err'); return; }
+  refreshNodeSelects();
+  document.getElementById('assignModal').classList.add('show');
+}
+async function doAssign() {
+  const envSel = Array.from(document.getElementById('as-env').selectedOptions).map(o => o.value).filter(Boolean);
+  const nodeSel = Array.from(document.getElementById('as-node').selectedOptions).map(o => o.value).filter(Boolean);
+  if (!envSel.length || !nodeSel.length) { toast('环境和节点都要选', 'err'); return; }
+  const mapping = {};
+  for (let i = 0; i < envSel.length && i < nodeSel.length; i++) {
+    mapping[envSel[i]] = nodeSel[i];
+  }
+  toast('分配中…');
+  for (const [env, node] of Object.entries(mapping)) {
+    await api('/api/nodes/assign', { method: 'POST', body: JSON.stringify({ env, node }) });
+  }
+  toast(`已分配 ${Object.keys(mapping).length} 个环境`, 'ok');
+  closeModal('assignModal');
+  load();
+}
+async function autoAssign() {
+  if (!NODES.length) { toast('节点池为空，先导入节点', 'err'); return; }
+  const j = await api('/api/nodes/assign', { method: 'POST', body: JSON.stringify({ auto: true }) });
+  if (j.ok) {
+    const n = Object.keys(j.mapping || {}).length;
+    toast(n ? `已给 ${n} 个空闲环境分配节点` : '没有空闲环境需要分配', n ? 'ok' : '');
+    load();
+  } else toast(j.error || '失败', 'err');
+}
+async function openNodePicker(envId) {
+  if (!NODES.length) { toast('节点池为空，请先在「节点池」导入', 'err'); return; }
+  // 简单选择：用下拉弹窗
+  const names = NODES.map((n, i) => `${i + 1}. ${n.name} (${n.protocol} ${n.server}:${n.port})`).join('\n');
+  const pick = prompt(`为 ${envId} 选择节点（输入编号，0 = 取消绑定）\n\n${names}`);
+  if (pick === null) return;
+  const idx = parseInt(pick, 10);
+  if (isNaN(idx)) return;
+  const nodeId = idx === 0 ? '' : (NODES[idx - 1] ? NODES[idx - 1].id : null);
+  if (nodeId === null) { toast('编号超出范围', 'err'); return; }
+  const j = await api('/api/nodes/assign', { method: 'POST', body: JSON.stringify({ env: envId, node: nodeId }) });
+  toast(j.ok ? '已更新节点绑定' : (j.error || '失败'), j.ok ? 'ok' : 'err');
+  load();
+}
+// ---------------- 新建环境 ----------------
+function openCreate() {
+  document.getElementById('f-id').value = 'taobao-' + String(ENVS.length + 1).padStart(2, '0');
+  document.getElementById('f-backend').value = 'firefox';
+  renderKernelVersions('f', '150.0');
+  refreshNodeSelects();
+  document.getElementById('createModal').classList.add('show');
+}
+// ---------------- 导入导出 ----------------
+function exportConfig() {
+  const withSecrets = confirm(
+    '导出配置\n\n' +
+    '点「确定」= 导出完整配置（含代理密码、UUID 等凭据，请妥善保管）\n' +
+    '点「取消」= 导出脱敏版本（凭据用 *** 代替，适合分享或排查）'
+  );
+  const url = '/api/export' + (withSecrets ? '?secrets=1' : '');
+  window.open(url, '_blank');
+  toast(withSecrets ? '已导出完整配置（含凭据）' : '已导出脱敏配置', 'ok');
+}
+function openImportConfig() {
+  document.getElementById('cfg-text').value = '';
+  document.getElementById('cfg-file').value = '';
+  document.getElementById('importCfgResult').innerHTML = '';
+  document.getElementById('importCfgModal').classList.add('show');
+}
+function readCfgFile(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    document.getElementById('cfg-text').value = e.target.result || '';
+    toast('已读取文件，点「开始导入」执行');
+  };
+  reader.onerror = function () { toast('读取文件失败', 'err'); };
+  reader.readAsText(f, 'utf-8');
+}
+async function doImportConfig() {
+  const text = document.getElementById('cfg-text').value.trim();
+  if (!text) { toast('请选择文件或粘贴 JSON', 'err'); return; }
+  let cfg;
+  try {
+    cfg = JSON.parse(text);
+  } catch (e) {
+    toast('JSON 格式错误: ' + e.message, 'err');
+    return;
+  }
+  const overwrite = document.getElementById('cfg-overwrite').value === '1';
+  toast('导入中…');
+  const j = await api('/api/import', {
+    method: 'POST',
+    body: JSON.stringify({ config: cfg, overwrite }),
+  });
+  const box = document.getElementById('importCfgResult');
+  if (j.ok) {
+    const r = j.result || {};
+    const env = r.environments || {};
+    const node = r.nodes || {};
+    const sub = r.subscriptions || {};
+    const fp = r.fingerprints || {};
+    box.innerHTML = `<div class="ok-box">
+      环境：新增 ${env.added || 0}，更新 ${env.updated || 0}，跳过 ${env.skipped || 0}<br>
+      节点：新增 ${node.added || 0}，跳过 ${node.skipped || 0}<br>
+      订阅：新增 ${sub.added || 0}，跳过 ${sub.skipped || 0}<br>
+      指纹：新增 ${fp.added || 0}，跳过 ${fp.skipped || 0}
+    </div>`;
+    toast('导入完成', 'ok');
+    load();
+    loadNodes();
+    loadSubs();
+  } else {
+    box.innerHTML = `<div class="warn">${esc(j.error || '导入失败')}</div>`;
+    toast(j.error || '导入失败', 'err');
+  }
+}
+// ---------------- 环境锁 ----------------
+function openLockModal(envId) {
+  const pwd = prompt(`给环境 ${envId} 上锁\n\n设置解锁密码（至少 4 位）：\n上锁后修改配置、启动停止都需要输入密码。`);
+  if (pwd === null) return;
+  if (!pwd || pwd.length < 4) { toast('密码至少 4 位', 'err'); return; }
+  api(`/api/envs/${envId}/lock`, { method: 'POST', body: JSON.stringify({ password: pwd }) })
+    .then(j => {
+      toast(j.ok ? `已上锁 ${envId}` : (j.error || '上锁失败'), j.ok ? 'ok' : 'err');
+      load();
+    });
+}
+async function unlockEnv(envId) {
+  const pwd = prompt(`解锁环境 ${envId}\n\n请输入密码：`);
+  if (pwd === null) return;
+  const j = await api(`/api/envs/${envId}/unlock`, { method: 'POST', body: JSON.stringify({ password: pwd }) });
+  if (j.ok) {
+    toast(`已解锁 ${envId}`, 'ok');
+  } else {
+    toast(j.error || '解锁失败', 'err');
+  }
+  load();
+}
+/** 带密码执行一个操作；遇到 403 锁拦截时提示输入密码并重试。 */
+async function withPassword(envId, fn) {
+  let pwd = '';
+  let result = await fn(pwd);
+  if (result && result.locked) {
+    pwd = prompt(`环境 ${envId} 已上锁，请输入密码：`) || '';
+    if (!pwd) return result;
+    result = await fn(pwd);
+  }
+  return result;
+}
+// ---------------- 代理链 ----------------
+let CHAIN_ENV = '';
+let CHAIN_LIST = [];
+async function openChainEditor(envId) {
+  const env = ENVS.find(e => e.id === envId);
+  if (!env) return;
+  CHAIN_ENV = envId;
+  CHAIN_LIST = (env.chainNodes || []).map(n => n.id);
+  if (!NODES.length) { toast('节点池为空，请先导入节点', 'err'); return; }
+  renderChainEditor();
+  document.getElementById('chainModal').classList.add('show');
+}
+function renderChainEditor() {
+  const box = document.getElementById('chainBody');
+  const env = ENVS.find(e => e.id === CHAIN_ENV);
+  let html = `<div class="warn" style="margin-bottom:12px">
+    按顺序排列：<b>第一个是最终出口</b>，后面依次是前置中转。<br>
+    流量路径：浏览器 → 最后一个节点 → ... → 第一个节点 → 目标网站
+  </div>`;
+  html += '<div style="margin-bottom:12px">';
+  if (!CHAIN_LIST.length) {
+    html += '<span class="muted">尚未设置代理链（使用单节点或无代理）</span>';
+  } else {
+    html += CHAIN_LIST.map((nid, i) => {
+      const n = NODES.find(x => x.id === nid);
+      const role = i === 0 ? '出口' : '中转 ' + i;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fbfcfd;border:1px solid #e8eaee;border-radius:6px;margin-bottom:6px">
+        <span class="tag ${i === 0 ? 'green' : 'gray'}">${role}</span>
+        <span class="node-name">${esc(n ? n.name : nid)}</span>
+        <span class="mono muted" style="font-size:11px">${esc(n ? n.protocol + ' ' + n.server + ':' + n.port : '')}</span>
+        <button class="sm ghost" style="margin-left:auto" onclick="chainMove(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="sm ghost" onclick="chainMove(${i},1)" ${i === CHAIN_LIST.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="sm danger" onclick="chainRemove(${i})">移除</button>
+      </div>`;
+    }).join('');
+  }
+  html += '</div>';
+  // 添加节点
+  const available = NODES.filter(n => !CHAIN_LIST.includes(n.id));
+  if (CHAIN_LIST.length < 3 && available.length) {
+    html += `<div class="field">
+      <label>添加节点到链尾</label>
+      <select id="chain-add-sel">
+        ${available.map(n => `<option value="${esc(n.id)}">${esc(n.name)} · ${esc(n.protocol)} · ${esc(n.server)}</option>`).join('')}
+      </select>
+    </div>
+    <button class="sm ghost" onclick="chainAdd()">+ 添加</button>`;
+  } else if (CHAIN_LIST.length >= 3) {
+    html += '<div class="muted" style="font-size:12px">已达最大 3 级</div>';
+  }
+  box.innerHTML = html;
+}
+function chainAdd() {
+  const sel = document.getElementById('chain-add-sel');
+  if (!sel) return;
+  CHAIN_LIST.push(sel.value);
+  renderChainEditor();
+}
+function chainRemove(idx) {
+  CHAIN_LIST.splice(idx, 1);
+  renderChainEditor();
+}
+function chainMove(idx, dir) {
+  const to = idx + dir;
+  if (to < 0 || to >= CHAIN_LIST.length) return;
+  const t = CHAIN_LIST[idx];
+  CHAIN_LIST[idx] = CHAIN_LIST[to];
+  CHAIN_LIST[to] = t;
+  renderChainEditor();
+}
+async function saveChain() {
+  const envId = CHAIN_ENV;
+  const j = await withPassword(envId, (pwd) => api(`/api/envs/${envId}/chain`, {
+    method: 'PUT',
+    body: JSON.stringify({ chain: CHAIN_LIST, password: pwd }),
+  }));
+  if (j.ok) {
+    toast('代理链已保存', 'ok');
+    closeModal('chainModal');
+    load();
+  } else {
+    toast(j.error || '保存失败', 'err');
+  }
+}
+async function testChain() {
+  const envId = CHAIN_ENV;
+  if (!CHAIN_LIST.length) { toast('代理链为空', 'err'); return; }
+  toast('测试链条连通性…');
+  const j = await api(`/api/envs/${envId}/chain/test`, {
+    method: 'POST',
+    body: JSON.stringify({ chain: CHAIN_LIST }),
+  });
+  if (j.ok) {
+    const p = j.probe || {};
+    toast(`链条连通（${j.hops} 级）→ 出口 ${p.ip} ${p.country || ''} ${p.isp || ''}`, 'ok');
+  } else {
+    toast('链条不通: ' + String(j.error || (j.probe && j.probe.error) || '未知').slice(0, 120), 'err');
+  }
+}
+// ---------------- 克隆 ----------------
+function openClone(srcId) {
+  const src = ENVS.find(e => e.id === srcId);
+  if (!src) return;
+  document.getElementById('c-source').value = `${src.name || src.id} (${src.id})`;
+  document.getElementById('c-source').dataset.src = srcId;
+  // 生成一个不冲突的编号
+  let n = ENVS.length + 1;
+  let candidate = 'taobao-' + String(n).padStart(2, '0');
+  while (ENVS.some(e => e.id === candidate)) {
+    n++;
+    candidate = 'taobao-' + String(n).padStart(2, '0');
+  }
+  document.getElementById('c-target').value = candidate;
+  document.getElementById('c-name').value = '';
+  const opts = ['<option value="">沿用源环境的节点</option>']
+    .concat(NODES.map(n2 => `<option value="${esc(n2.id)}">${esc(n2.name)} · ${esc(n2.protocol)}</option>`));
+  document.getElementById('c-node').innerHTML = opts.join('');
+  document.getElementById('cloneModal').classList.add('show');
+}
+async function submitClone() {
+  const src = document.getElementById('c-source').dataset.src;
+  const target = document.getElementById('c-target').value.trim();
+  if (!target) { toast('请填写新环境编号', 'err'); return; }
+  const nodeSel = document.getElementById('c-node').value;
+  const body = {
+    source: src,
+    target,
+    name: document.getElementById('c-name').value.trim(),
+    vary: document.getElementById('c-vary').value === '1',
+  };
+  if (nodeSel) body.nodeId = nodeSel;
+  toast('克隆中…');
+  const j = await api('/api/envs/clone', { method: 'POST', body: JSON.stringify(body) });
+  if (j.ok) {
+    toast(`已克隆为 ${target}`, 'ok');
+    closeModal('cloneModal');
+    load();
+  } else {
+    toast(j.error || '克隆失败', 'err');
+  }
+}
+// ---------------- 指纹对比 ----------------
+async function compareSelected() {
+  const ids = Array.from(SELECTED);
+  if (ids.length < 2) { toast('至少选择两个环境', 'err'); return; }
+  toast('对比中…');
+  const j = await api('/api/envs/compare', { method: 'POST', body: JSON.stringify({ ids }) });
+  if (!j.ok) { toast(j.error || '对比失败', 'err'); return; }
+  const envs = j.envs || [];
+  const rows = j.rows || [];
+  const sameCount = rows.filter(r => r.same).length;
+  let html = `<div class="${sameCount ? 'warn' : 'ok-box'}" style="margin-bottom:14px">`;
+  if (sameCount) {
+    html += `发现 <b>${sameCount}</b> 个维度在多个环境中相同，存在关联风险。建议对这些环境「换指纹」或使用克隆时的「噪声独立」选项。`;
+  } else {
+    html += '所有维度在所有环境中都不相同，关联风险低。';
+  }
+  html += '</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11.5px">';
+  html += '<thead><tr><th style="text-align:left;padding:7px;background:#fbfcfd;border-bottom:1px solid #e8eaee">维度</th>';
+  envs.forEach(e => {
+    html += `<th style="text-align:left;padding:7px;background:#fbfcfd;border-bottom:1px solid #e8eaee">${esc(e)}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  rows.forEach(r => {
+    const bg = r.same ? 'background:#fdeeee' : '';
+    html += `<tr style="${bg}"><td style="padding:6px 7px;border-bottom:1px solid #1e222b;color:#9096a3">${esc(r.dimension)}</td>`;
+    r.values.forEach(v => {
+      const short = String(v).length > 42 ? String(v).slice(0, 42) + '…' : v;
+      html += `<td class="mono" style="padding:6px 7px;border-bottom:1px solid #1e222b">${esc(short)}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('compareBody').innerHTML = html;
+  document.getElementById('compareModal').classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+async function submitCreate() {
+  const id = document.getElementById('f-id').value.trim();
+  if (!id) { toast('请填写环境编号', 'err'); return; }
+  const browserBackend = document.getElementById('f-backend').value;
+  const kernelVersion = document.getElementById('f-kernelver').value;
+  if (browserBackend === 'firefox' && !kernelVersion) {
+    toast('请先到「内核」页安装 Firefox 内核', 'err');
+    return;
+  }
+  const body = {
+    id,
+    name: document.getElementById('f-name').value.trim(),
+    platform: document.getElementById('f-platform').value.trim(),
+    remark: document.getElementById('f-remark').value.trim(),
+    startUrl: document.getElementById('f-url').value.trim(),
+    nodeId: document.getElementById('f-node').value,
+    browserBackend,
+    kernelVersion,
+  };
+  const j = await api('/api/envs', { method: 'POST', body: JSON.stringify(body) });
+  if (j.ok) {
+    toast('已创建 ' + id, 'ok');
+    closeModal('createModal');
+    load();
+  } else toast(j.error || '创建失败', 'err');
+}
+// ---------------- 启动 ----------------
+checkAuth().then(ok => {
+  if (ok) {
+    load();
+    loadNodes();
+    loadSubs();
+    loadKernelOptions();
+  }
+});
+setInterval(() => { if (!document.hidden && CUR_TAB === 'envs') load(); }, 15000);
+</script>
+</body>
+</html>
